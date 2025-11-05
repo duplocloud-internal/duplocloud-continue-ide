@@ -1,6 +1,8 @@
 import { fetchwithRequestOptions } from "@continuedev/fetch";
+import * as fs from "fs";
 import * as URI from "uri-js";
 import { v4 as uuidv4 } from "uuid";
+import * as YAML from "yaml";
 
 import { CompletionProvider } from "./autocomplete/CompletionProvider";
 import {
@@ -25,7 +27,11 @@ import { ChatDescriber } from "./util/chatDescriber";
 import { compactConversation } from "./util/conversationCompaction";
 import { GlobalContext } from "./util/GlobalContext";
 import historyManager from "./util/history";
-import { editConfigFile, migrateV1DevDataFiles } from "./util/paths";
+import {
+  editConfigFile,
+  getPrimaryConfigFilePath,
+  migrateV1DevDataFiles,
+} from "./util/paths";
 import { Telemetry } from "./util/posthog";
 import {
   isProcessBackgrounded,
@@ -71,6 +77,7 @@ import { MCPManagerSingleton } from "./context/mcp/MCPManagerSingleton";
 import { performAuth, removeMCPAuth } from "./context/mcp/MCPOauth";
 import { setMdmLicenseKey } from "./control-plane/mdm/mdm";
 import { myersDiff } from "./diff/myers";
+import duploContextService from "./duplocloud/duplo-service";
 import { ApplyAbortManager } from "./edit/applyAbortManager";
 import { streamDiffLines } from "./edit/streamDiffLines";
 import { shouldIgnore } from "./indexing/shouldIgnore";
@@ -184,6 +191,64 @@ export class Core {
         void (async () => {
           const serializedResult =
             await this.configHandler.getSerializedConfig();
+          // Augment serialized config with custom top-level fields we want to expose to GUI
+          try {
+            const raw = await this.configHandler.loadConfig();
+            const rawCfg: any = raw.config;
+            if (serializedResult.config && rawCfg) {
+              // Log the file path Core is using for local config (helps verify where to add duplo)
+              try {
+                const primaryPath = getPrimaryConfigFilePath();
+                console.log(
+                  `[core] Using primary config at: ${primaryPath} (adding duplo passthrough if present)`,
+                );
+              } catch {}
+              // Pass through top-level duplo so GUI can read it from Redux
+              if (Array.isArray(rawCfg.duplo)) {
+                (serializedResult.config as any).duplo = rawCfg.duplo;
+              }
+              // Also pass through ui.duplo if present (GUI already reads ui.duplo)
+              if (rawCfg.ui && Array.isArray(rawCfg.ui.duplo)) {
+                (serializedResult.config as any).ui =
+                  (serializedResult.config as any).ui || {};
+                (serializedResult.config as any).ui.duplo = rawCfg.ui.duplo;
+              }
+
+              // Fallback: if duplo not present in validated config, parse YAML directly to extract it
+              const hasTopLevel = Array.isArray(
+                (serializedResult.config as any).duplo,
+              );
+              const hasUiLevel = Array.isArray(
+                (serializedResult.config as any)?.ui?.duplo,
+              );
+              if (!hasTopLevel || !hasUiLevel) {
+                try {
+                  const primaryPath = getPrimaryConfigFilePath();
+                  if (fs.existsSync(primaryPath)) {
+                    const yml = fs.readFileSync(primaryPath, "utf8");
+                    const parsed: any = YAML.parse(yml);
+                    if (!hasTopLevel && Array.isArray(parsed?.duplo)) {
+                      (serializedResult.config as any).duplo = parsed.duplo;
+                      console.log(
+                        "[core] Injected duplo from YAML (top-level)",
+                      );
+                    }
+                    if (!hasUiLevel && Array.isArray(parsed?.ui?.duplo)) {
+                      (serializedResult.config as any).ui =
+                        (serializedResult.config as any).ui || {};
+                      (serializedResult.config as any).ui.duplo =
+                        parsed.ui.duplo;
+                      console.log("[core] Injected duplo from YAML (ui.duplo)");
+                    }
+                  }
+                } catch (e) {
+                  console.warn(
+                    `[core] Failed to parse YAML for duplo passthrough: ${(e as Error).message}`,
+                  );
+                }
+              }
+            }
+          } catch {}
           this.messenger.send("configUpdate", {
             result: serializedResult,
             profileId:
@@ -428,6 +493,36 @@ export class Core {
 
     on("config/openProfile", async (msg) => {
       await this.configHandler.openConfigProfile(msg.data.profileId);
+    });
+
+    // Proxy Duplo GET /admin/GetTenantsForUser to avoid webview CORS
+    on("duplo/getPortalTenants", async (msg) => {
+      const { portal, token } = msg.data ?? {};
+      if (!portal) return { success: false, body: { error: "missing portal" } };
+      try {
+        return await duploContextService.getPortalTenants(portal, token);
+      } catch (e: any) {
+        console.warn("[duplo/proxy] request failed:", e?.message || e);
+        return {
+          success: false,
+          body: { error: e?.message || String(e) },
+        };
+      }
+    });
+
+    on("duplo/createAiTicket", async (msg) => {
+      const payload = msg.data ?? {};
+      if (!payload.sessionId)
+        return { success: false, body: { error: "missing sessionId" } };
+      try {
+        return await duploContextService.createAiTicket(payload);
+      } catch (e: any) {
+        console.warn("[duplo/proxy] request failed:", e?.message || e);
+        return {
+          success: false,
+          body: { error: e?.message || String(e) },
+        };
+      }
     });
 
     on("config/ideSettingsUpdate", async (msg) => {

@@ -84,7 +84,7 @@
       }
     ],
     "configuration": {
-      "title": "Continue",
+      "title": "DuploCloud AI",
       "properties": {
         "continue.telemetryEnabled": {
           "type": "boolean",
@@ -604,8 +604,8 @@
       "activitybar": [
         {
           "id": "continue",
-          "title": "Continue",
-          "icon": "media/sidebar-icon.png"
+          "title": "DuploCloud AI",
+          "icon": "media/duplo-icon-white.svg"
         }
       ],
       "panel": [
@@ -621,8 +621,8 @@
         {
           "type": "webview",
           "id": "continue.continueGUIView",
-          "name": "Continue",
-          "icon": "media/sidebar-icon.png",
+          "name": "DuploCloud AI",
+          "icon": "media/duplo-icon-white.svg",
           "visibility": "visible"
         }
       ],

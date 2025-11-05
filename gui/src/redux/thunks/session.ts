@@ -1,6 +1,7 @@
 import { createAsyncThunk, unwrapResult } from "@reduxjs/toolkit";
 import { BaseSessionMetadata, ChatMessage, Session } from "core";
 import { RemoteSessionMetadata } from "core/control-plane/client";
+import { DuploContext } from "core/duplocloud/ai.model";
 import { NEW_SESSION_TITLE } from "core/util/constants";
 import { renderChatMessage } from "core/util/messageContent";
 import { IIdeMessenger } from "../../context/IdeMessenger";
@@ -251,9 +252,30 @@ export const saveCurrentSession = createAsyncThunk<
       title,
       workspaceDirectory: window.workspacePaths?.[0] || "",
       history: state.session.history,
+      duploContext: state.session?.duploContext || undefined,
     };
 
     const result = await dispatch(updateSession(session));
     unwrapResult(result);
+  },
+);
+
+export const saveDuploContextSettings = createAsyncThunk<
+  void,
+  { duploContext: DuploContext },
+  ThunkApiType
+>(
+  "session/saveContextSettings",
+  async ({ duploContext }, { dispatch, getState }) => {
+    const state = getState();
+    const session: Session = {
+      sessionId: state.session.id,
+      title: state.session.title,
+      history: state.session.history,
+      workspaceDirectory: window.workspacePaths?.[0] || "",
+      duploContext: duploContext,
+    };
+
+    await dispatch(updateSession(session));
   },
 );

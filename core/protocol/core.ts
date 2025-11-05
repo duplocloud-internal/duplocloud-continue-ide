@@ -49,6 +49,7 @@ import {
   ControlPlaneSessionInfo,
 } from "../control-plane/AuthTypes";
 import { CreditStatus, RemoteSessionMetadata } from "../control-plane/client";
+import { TicketAgent } from "../duplocloud/ai.model";
 import { ProcessedItem } from "../nextEdit/NextEditPrefetchQueue";
 import { NextEditOutcome } from "../nextEdit/types";
 import { ContinueErrorReason } from "../util/errors";
@@ -344,4 +345,20 @@ export type ToCoreFromIdeOrWebviewProtocol = {
   "process/isBackgrounded": [{ toolCallId: string }, boolean];
   "process/killTerminalProcess": [{ toolCallId: string }, void];
   "mdm/setLicenseKey": [{ licenseKey: string }, boolean];
+  // Duplo proxy (avoid webview CORS)
+  "duplo/getPortalTenants": [
+    { portal: string; token?: string },
+    { success: boolean; body: any },
+  ];
+  "duplo/createAiTicket": [
+    {
+      portalUrl: string;
+      authToken?: string;
+      tenantId: string;
+      assignee: TicketAgent;
+      userText: string;
+      sessionId: string;
+    },
+    { success: boolean; body: any },
+  ];
 };

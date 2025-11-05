@@ -5,7 +5,7 @@ import {
   PencilIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { IdeMessengerContext } from "../../../../context/IdeMessenger";
 import { useAppDispatch, useAppSelector } from "../../../../redux/hooks";
@@ -14,6 +14,10 @@ import {
   selectToolCallsByStatus,
 } from "../../../../redux/selectors/selectToolCalls";
 import { setSelectedProfile } from "../../../../redux/slices/profilesSlice";
+import {
+  setDialogMessage,
+  setShowDialog,
+} from "../../../../redux/slices/uiSlice";
 import StarterCreditsPopover from "../../../StarterCreditsPopover";
 import { ToolTip } from "../../../gui/Tooltip";
 import HoverItem from "../../InputToolbar/HoverItem";
@@ -22,6 +26,8 @@ import { useAuth } from "../../../../context/Auth";
 import { useCreditStatus } from "../../../../hooks/useCredits";
 import { CONFIG_ROUTES } from "../../../../util/navigation";
 import { AssistantAndOrgListbox } from "../../../AssistantAndOrgListbox";
+import { DuploContextDialog } from "../../../dialogs/DuploContextDialog";
+import DuploCloudIcon from "../../../svg/DuploCloudIcon";
 
 export function BlockSettingsTopToolbar() {
   const navigate = useNavigate();
@@ -29,6 +35,8 @@ export function BlockSettingsTopToolbar() {
   const { selectedProfile } = useAuth();
 
   const configError = useAppSelector((store) => store.config.configError);
+  const duploContext = useAppSelector((store) => store.session.duploContext);
+  const sessionId = useAppSelector((store) => store.session.id);
   const ideMessenger = useContext(IdeMessengerContext);
 
   const pendingToolCalls = useAppSelector(selectPendingToolCalls);
@@ -72,6 +80,26 @@ export function BlockSettingsTopToolbar() {
     }
     navigate(CONFIG_ROUTES.MODELS);
   };
+
+  const handleDuploClick = () => {
+    if (selectedProfile) {
+      dispatch(setSelectedProfile(selectedProfile.id));
+      ideMessenger.post("didChangeSelectedProfile", {
+        id: selectedProfile.id,
+      });
+    }
+    // Open per-session Cloud settings dialog
+    dispatch(setDialogMessage(<DuploContextDialog />));
+    dispatch(setShowDialog(true));
+  };
+
+  const noDuploContext = useMemo(
+    () =>
+      !duploContext?.portal ||
+      !duploContext?.tenant?.tenantId ||
+      !duploContext?.agent?.instanceId,
+    [duploContext],
+  );
 
   return (
     <div className="flex flex-1 items-center justify-between gap-3">
@@ -131,6 +159,38 @@ export function BlockSettingsTopToolbar() {
                 <CubeIcon className="text-description-muted h-3 w-3 hover:brightness-125" />
               </HoverItem>
             </ToolTip>
+
+            {sessionId && (
+              <ToolTip
+                content={
+                  noDuploContext ? (
+                    "Set Cloud Context"
+                  ) : (
+                    <div className="text-left">
+                      <div>Current Context:</div>
+                      <div>
+                        <span className="font-semibold">Portal:</span>{" "}
+                        {duploContext?.portal}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Tenant:</span>{" "}
+                        {duploContext?.tenant?.tenantName}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Agent:</span>{" "}
+                        {duploContext?.agent?.agentName}
+                      </div>
+                    </div>
+                  )
+                }
+              >
+                <HoverItem onClick={handleDuploClick} px={2}>
+                  <div className="text-description-muted hover:brightness-125">
+                    <DuploCloudIcon height={14} width={14} />
+                  </div>
+                </HoverItem>
+              </ToolTip>
+            )}
           </div>
         )}
       </div>

@@ -12,11 +12,13 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "../../../components/ui";
+import { cn } from "../../../util/cn";
 
 interface BaseUserSettingProps {
   title: string;
   description: React.ReactNode;
   disabled?: boolean;
+  stacked?: boolean; // render control on the next line
 }
 
 interface ToggleUserSettingProps extends BaseUserSettingProps {
@@ -38,6 +40,7 @@ interface SelectUserSettingProps extends BaseUserSettingProps {
   value: string;
   onChange: (value: string) => void;
   options: { label: string; value: string }[];
+  placeholder?: string;
 }
 
 interface InputUserSettingProps extends BaseUserSettingProps {
@@ -128,17 +131,38 @@ export function UserSetting(props: UserSettingProps) {
             onChange={props.onChange}
             disabled={disabled}
           >
-            <ListboxButton className="border-command-border !w-20 w-20 !flex-none justify-between !rounded-md px-2 py-1">
+            <ListboxButton
+              className={cn(
+                "border-command-border justify-between !rounded-md px-2 py-1",
+                props.stacked
+                  ? "w-full min-w-[240px]"
+                  : "!w-20 w-20 !flex-none",
+              )}
+            >
               {props.options.find((opt) => opt.value === props.value)?.label ||
-                props.value}
+                props.placeholder ||
+                props.value ||
+                ""}
               <ChevronDownIcon className="h-3 w-3" />
             </ListboxButton>
-            <ListboxOptions className="!w-20 !min-w-0">
-              {props.options.map((option) => (
-                <ListboxOption key={option.value} value={option.value}>
-                  {option.label}
-                </ListboxOption>
-              ))}
+
+            <ListboxOptions
+              // className
+              className={cn(
+                props.stacked ? "w-[70%] min-w-[240px]" : "!w-20 !min-w-0",
+              )}
+            >
+              {props.options.length > 0 ? (
+                props.options.map((option) => (
+                  <ListboxOption key={option.value} value={option.value}>
+                    {option.label}
+                  </ListboxOption>
+                ))
+              ) : (
+                <div className="text-description px-2 py-1 text-xs">
+                  {props.placeholder || "No options"}
+                </div>
+              )}
             </ListboxOptions>
           </Listbox>
         );
@@ -208,10 +232,10 @@ export function UserSetting(props: UserSettingProps) {
     }
   };
 
-  // Use vertical layout for input types, horizontal for others
-  const isInputType = props.type === "input";
+  // Vertical layout for input or when explicitly stacked
+  const isStacked = props.type === "input" || (props as any).stacked === true;
 
-  if (isInputType) {
+  if (isStacked) {
     return (
       <div className="flex flex-col gap-3">
         <div className="flex flex-col">

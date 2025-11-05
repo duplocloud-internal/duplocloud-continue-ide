@@ -24,8 +24,9 @@ import {
   ToolCallDelta,
   ToolCallState,
 } from "core";
-import { mergeReasoningDetails } from "core/llm/openaiTypeConverters";
 import type { RemoteSessionMetadata } from "core/control-plane/client";
+import { DuploContext } from "core/duplocloud/ai.model";
+import { mergeReasoningDetails } from "core/llm/openaiTypeConverters";
 import { NEW_SESSION_TITLE } from "core/util/constants";
 import {
   renderChatMessage,
@@ -223,6 +224,8 @@ type SessionState = {
   contextPercentage?: number;
   inlineErrorMessage?: InlineErrorMessageType;
   compactionLoading: Record<number, boolean>; // Track compaction loading by message index
+  // Per-session DuploContext
+  duploContext?: DuploContext;
 };
 
 export const INITIAL_SESSION_STATE: SessionState = {
@@ -693,10 +696,12 @@ export const sessionSlice = createSlice({
         state.history = payload.history as any;
         state.title = payload.title;
         state.id = payload.sessionId;
+        state.duploContext = payload?.duploContext;
       } else {
         state.history = [];
         state.title = NEW_SESSION_TITLE;
         state.id = uuidv4();
+        state.duploContext = undefined;
       }
     },
     updateSessionTitle: (state, { payload }: PayloadAction<string>) => {
@@ -956,6 +961,9 @@ export const sessionSlice = createSlice({
     setHasReasoningEnabled: (state, action: PayloadAction<boolean>) => {
       state.hasReasoningEnabled = action.payload;
     },
+    setDuploContext: (state, action: PayloadAction<DuploContext>) => {
+      state.duploContext = action.payload;
+    },
     setNewestToolbarPreviewForInput: (
       state,
       {
@@ -1080,6 +1088,7 @@ export const {
   setIsPruned,
   setContextPercentage,
   setCompactionLoading,
+  setDuploContext,
 } = sessionSlice.actions;
 
 export const { selectIsGatheringContext } = sessionSlice.selectors;

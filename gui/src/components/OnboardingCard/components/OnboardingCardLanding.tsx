@@ -6,7 +6,7 @@ import { useCreditStatus } from "../../../hooks/useCredits";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { selectCurrentOrg } from "../../../redux/slices/profilesSlice";
 import { selectFirstHubProfile } from "../../../redux/thunks/selectFirstHubProfile";
-import ContinueLogo from "../../svg/ContinueLogo";
+import DuploCloudLogo from "../../svg/DuploCloudLogo";
 import { useOnboardingCard } from "../hooks/useOnboardingCard";
 
 export function OnboardingCardLanding({
@@ -58,7 +58,7 @@ export function OnboardingCardLanding({
   return (
     <div className="xs:px-0 flex w-full max-w-full flex-col items-center justify-center px-4 text-center">
       <div className="xs:flex hidden">
-        <ContinueLogo height={75} />
+        <DuploCloudLogo height={75} />
       </div>
 
       {outOfStarterCredits ? (
@@ -90,7 +90,7 @@ export function OnboardingCardLanding({
             onClick={onGetStarted}
             className="mt-4 grid w-full grid-flow-col items-center gap-2"
           >
-            Log in to Continue Hub
+            Log in to DuploCloud
           </Button>
         </>
       )}

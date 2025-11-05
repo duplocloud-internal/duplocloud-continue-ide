@@ -4,6 +4,7 @@ import {
   PromptTemplates,
 } from "@continuedev/config-yaml";
 import Parser from "web-tree-sitter";
+import { DuploContext, DuploPortal } from "./duplocloud/ai.model";
 import { CodebaseIndexer } from "./indexing/CodebaseIndexer";
 import { LLMConfigurationStatuses } from "./llm/constants";
 
@@ -272,6 +273,7 @@ export interface Session {
   title: string;
   workspaceDirectory: string;
   history: ChatHistoryItem[];
+  duploContext?: DuploContext;
 }
 
 export interface BaseSessionMetadata {
@@ -279,6 +281,7 @@ export interface BaseSessionMetadata {
   title: string;
   dateCreated: string;
   workspaceDirectory: string;
+  duploContext?: DuploContext;
 }
 
 export interface RangeInFile {
@@ -1405,6 +1408,7 @@ export interface ContinueUIConfig {
   codeWrap?: boolean;
   showSessionTabs?: boolean;
   continueAfterToolRejection?: boolean;
+  duplo?: DuploPortal;
 }
 
 export interface ContextMenuConfig {
