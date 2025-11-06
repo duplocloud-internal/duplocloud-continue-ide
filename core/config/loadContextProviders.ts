@@ -7,6 +7,7 @@ import { contextProviderClassFromName } from "../context/providers";
 import CurrentFileContextProvider from "../context/providers/CurrentFileContextProvider";
 import DiffContextProvider from "../context/providers/DiffContextProvider";
 import DocsContextProvider from "../context/providers/DocsContextProvider";
+import DuploCloudContextProvider from "../context/providers/DuploCloudContextProvider";
 import FileContextProvider from "../context/providers/FileContextProvider";
 import ProblemsContextProvider from "../context/providers/ProblemsContextProvider";
 import RulesContextProvider from "../context/providers/RulesContextProvider";
@@ -37,6 +38,7 @@ export function loadConfigContextProviders(
     new TerminalContextProvider({}),
     new ProblemsContextProvider({}),
     new RulesContextProvider({}),
+    new DuploCloudContextProvider({}),
   ];
 
   // Add from config

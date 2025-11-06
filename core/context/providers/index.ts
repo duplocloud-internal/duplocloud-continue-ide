@@ -11,6 +11,7 @@ import DebugLocalsProvider from "./DebugLocalsProvider";
 import DiffContextProvider from "./DiffContextProvider";
 import DiscordContextProvider from "./DiscordContextProvider";
 import DocsContextProvider from "./DocsContextProvider";
+import DuploCloudContextProvider from "./DuploCloudContextProvider";
 import FileContextProvider from "./FileContextProvider";
 import FileTreeContextProvider from "./FileTreeContextProvider";
 import FolderContextProvider from "./FolderContextProvider";
@@ -72,6 +73,7 @@ export const Providers: (typeof BaseContextProvider)[] = [
   GitCommitContextProvider,
   ClipboardContextProvider,
   RulesContextProvider,
+  DuploCloudContextProvider,
 ];
 
 export function contextProviderClassFromName(

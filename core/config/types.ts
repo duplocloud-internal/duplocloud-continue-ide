@@ -815,6 +815,7 @@ declare global {
     | "issue"
     | "repo-map"
     | "url"
+    | "duplocloud-ai"
     | string;
   
   type TemplateType =

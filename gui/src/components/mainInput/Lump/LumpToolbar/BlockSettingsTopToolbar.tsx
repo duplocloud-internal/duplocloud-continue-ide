@@ -178,7 +178,8 @@ export function BlockSettingsTopToolbar() {
                       </div>
                       <div>
                         <span className="font-semibold">Agent:</span>{" "}
-                        {duploContext?.agent?.agentName}
+                        {duploContext?.agent?.friendlyName ||
+                          duploContext?.agent?.agentName}
                       </div>
                     </div>
                   )

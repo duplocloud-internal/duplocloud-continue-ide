@@ -1,6 +1,8 @@
 import {
   DuploContext,
+  DuploContextType,
   DuploPortal,
+  SetDuploContextPayload,
   TenantsWithAgents,
   TicketAgent,
 } from "core/duplocloud/ai.model";
@@ -9,6 +11,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Button, SecondaryButton } from "..";
@@ -16,10 +19,12 @@ import { IdeMessengerContext } from "../../context/IdeMessenger";
 import { ConfigHeader } from "../../pages/config/components/ConfigHeader";
 import { UserSetting } from "../../pages/config/components/UserSetting";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { setDuploContext } from "../../redux/slices/sessionSlice";
 import { setDialogMessage, setShowDialog } from "../../redux/slices/uiSlice";
 import { saveDuploContextSettings } from "../../redux/thunks/session";
 import Spinner from "../gui/Spinner";
 import { Card } from "../ui";
+import ContextUpdatedDialog from "./ContextUpdatedDialog";
 
 export const DuploContextDialog: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -49,6 +54,9 @@ export const DuploContextDialog: React.FC = () => {
   const [tenantsByPortal, setTenantsByPortal] = useState<
     Record<string, TenantsWithAgents[]>
   >({});
+  const [error, setError] = useState<string | null>(null);
+
+  const isUpdateContext = useRef<boolean>(false);
 
   // Ensure the select preselects the current session's portal when the saved value changes
   useEffect(() => {
@@ -139,6 +147,13 @@ export const DuploContextDialog: React.FC = () => {
     setPortalMap().catch((e) =>
       console.error("[CloudSettings] tenants fetch failed", e),
     );
+
+    isUpdateContext.current =
+      duploContext?.portal &&
+      duploContext?.tenant?.tenantId &&
+      duploContext?.agent?.instanceId
+        ? true
+        : false;
   }, [isDialogOpen, ideMessenger]);
 
   useEffect(() => {
@@ -155,29 +170,52 @@ export const DuploContextDialog: React.FC = () => {
 
   const onSaveTicket = useCallback(async () => {
     try {
-      const authToken = duploList.find((d) => d.portal === portal)?.token;
+      const authToken = duploList.find((d) => d.portal === portal)
+        ?.token as string;
 
       if (!agent?.instanceId) {
-        throw new Error("Agent is not selected");
+        setError("Agent is not selected");
+        return;
       }
 
       if (!tenant?.tenantId) {
-        throw new Error("Tenant is not selected");
+        setError("Tenant is not selected");
+        return;
       }
 
-      setIsLoading(true);
-      const result = await ideMessenger.request("duplo/createAiTicket", {
-        portalUrl: portal,
+      let contextType = DuploContextType.CREATE;
+      if (isUpdateContext.current) {
+        if (portal !== duploContext?.portal) {
+          contextType = DuploContextType.UPDATE_PORTAL;
+        } else if (tenant?.tenantId !== duploContext?.tenant?.tenantId) {
+          contextType = DuploContextType.UPDATE_TENANT;
+        } else if (agent?.instanceId !== duploContext?.agent?.instanceId) {
+          contextType = DuploContextType.UPDATE_AGENT;
+        }
+      }
+
+      const payload: SetDuploContextPayload = {
+        context: {
+          portal,
+          tenant: {
+            tenantId: tenant.tenantId,
+            tenantName: tenant.tenantName,
+          },
+          agent: agent,
+        },
+        type: contextType,
         authToken: authToken,
-        tenantId: tenant?.tenantId || "",
-        assignee: agent,
         userText: sesTitle,
-        sessionId: sessionId,
-      });
+        sessionId,
+      };
+
+      setIsLoading(true);
+      const result = await ideMessenger.request(
+        "duplo/setTicketContext",
+        payload,
+      );
 
       if (result.status === "success" && result.content.success) {
-        onCloseDialog();
-
         const duploContext: DuploContext = {
           portal,
           tenant: {
@@ -187,15 +225,27 @@ export const DuploContextDialog: React.FC = () => {
           agent: agent,
         };
         await dispatch(saveDuploContextSettings({ duploContext }));
+        await dispatch(setDuploContext(duploContext));
+
+        dispatch(
+          setDialogMessage(
+            <ContextUpdatedDialog isUpdateContext={isUpdateContext.current} />,
+          ),
+        );
+        dispatch(setShowDialog(true));
+      } else {
+        setError("Failed to save context. Please contact support.");
       }
     } catch (e) {
       console.error("[CloudSettings] Error saving ticket", e);
+      setError("Failed to save context. Please contact support.");
     }
 
     setIsLoading(false);
   }, [portal, tenant, agent]);
 
   const onPortalChange = (value: string) => {
+    setError(null);
     if (value !== portal) {
       setPortal(value);
       setTenant(undefined);
@@ -213,6 +263,7 @@ export const DuploContextDialog: React.FC = () => {
   );
 
   const onTenantChange = (value: string, avoidAgentReset?: boolean) => {
+    setError(null);
     const tenant = tenantsByPortal?.[portal]?.find((t) => t.tenantId === value);
     setTenant(tenant);
     if (!avoidAgentReset) {
@@ -230,20 +281,25 @@ export const DuploContextDialog: React.FC = () => {
   );
 
   const onAgentChange = (value: string) => {
+    setError(null);
     const agent = tenant?.agentInstances?.find((a) => a.instanceId === value);
     setAgent(agent);
   };
 
   return (
     <div className="p-4">
-      <ConfigHeader title="Set Context" />
+      <ConfigHeader title="Set DuploCloud Context" />
       <Card>
+        {error && <div className="mb-2 text-sm text-red-500">{error}</div>}
+
         <div className="flex flex-col gap-4">
           <UserSetting
+            disabled={!duploList?.length || isLoading}
             stacked
             type="select"
-            title="DuploCloud Portal"
-            description="Select a portal from your config."
+            title="Portal"
+            description="Select a DuploCloud portal from your config."
+            placeholder="Select a portal"
             value={portal}
             onChange={onPortalChange}
             options={(duploList || []).map((d) => ({
@@ -253,6 +309,7 @@ export const DuploContextDialog: React.FC = () => {
           />
 
           <UserSetting
+            disabled={!tenantOptions.length || isLoading}
             stacked
             type="select"
             title="Tenant"
@@ -270,6 +327,7 @@ export const DuploContextDialog: React.FC = () => {
           ) : null}
 
           <UserSetting
+            disabled={!agentOptions.length || isLoading}
             stacked
             type="select"
             title="Agent"

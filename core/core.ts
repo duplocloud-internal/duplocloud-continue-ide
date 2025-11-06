@@ -510,12 +510,12 @@ export class Core {
       }
     });
 
-    on("duplo/createAiTicket", async (msg) => {
+    on("duplo/setTicketContext", async (msg) => {
       const payload = msg.data ?? {};
       if (!payload.sessionId)
         return { success: false, body: { error: "missing sessionId" } };
       try {
-        return await duploContextService.createAiTicket(payload);
+        return await duploContextService.setTicketContext(payload);
       } catch (e: any) {
         console.warn("[duplo/proxy] request failed:", e?.message || e);
         return {

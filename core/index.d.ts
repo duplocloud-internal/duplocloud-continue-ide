@@ -1009,6 +1009,7 @@ export type ContextProviderName =
   | "web"
   | "discord"
   | "clipboard"
+  | "duplocloud-ai"
   | string;
 
 export type TemplateType =

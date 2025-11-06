@@ -1,5 +1,20 @@
 import { generateUniqueId } from "./utils";
 
+export interface SetDuploContextPayload {
+  context: DuploContext;
+  type: DuploContextType;
+  authToken: string;
+  userText: string;
+  sessionId: string;
+}
+
+export enum DuploContextType {
+  CREATE = "create",
+  UPDATE_PORTAL = "update_portal",
+  UPDATE_TENANT = "update_tenant",
+  UPDATE_AGENT = "update_agent",
+}
+
 export class DuploPortal {
   portal: string = "";
   token?: string;

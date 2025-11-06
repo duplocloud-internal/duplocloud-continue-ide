@@ -21,4 +21,5 @@ export const SUPPORTED_PROMPT_CONTEXT_PROVIDERS: ContextProviderName[] = [
   "debugger",
   "terminal",
   "diff",
+  "duplocloud-ai",
 ];

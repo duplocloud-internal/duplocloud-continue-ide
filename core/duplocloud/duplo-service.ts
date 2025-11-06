@@ -1,7 +1,11 @@
 import { fetchwithRequestOptions } from "@continuedev/fetch";
+import { GlobalContext } from "../util/GlobalContext";
 import {
   AiTicket,
   CreateAiTicket,
+  DuploContext,
+  DuploContextType,
+  SetDuploContextPayload,
   TenantsWithAgents,
   TicketAgent,
 } from "./ai.model";
@@ -18,6 +22,9 @@ class DuploService {
   }
 
   async getPortalTenants(portalURL: string, authToken?: string) {
+    const sharedConfig = new GlobalContext().getSharedConfig();
+    console.log("[duplo-service/getPortalTenants] sharedConfig", sharedConfig);
+
     const cachedTenants = this.cacheTenants.get(portalURL);
     if (cachedTenants && cachedTenants?.length > 0)
       return { success: true, body: cachedTenants };
@@ -35,14 +42,14 @@ class DuploService {
       const text = await res.text();
       try {
         const json: TenantsWithAgents[] = JSON.parse(text);
-        console.log("[duplo/getPortalTenants] status=", res.status);
+        console.log("[duplo-service/getPortalTenants] status=", res.status);
 
         const tenants = json?.map((agent) => new TenantsWithAgents(agent));
         this.cacheTenants.set(portalURL, tenants);
         return { success: true, body: tenants };
       } catch {
         console.log(
-          "[duplo/getPortalTenants] status=",
+          "[duplo-service/getPortalTenants] status=",
           res.status,
           "(non-JSON body)",
         );
@@ -50,7 +57,7 @@ class DuploService {
       }
     } catch (error) {
       console.error(
-        "[duplo/getPortalTenants] Error getting tenants with agents for `",
+        "[duplo-service/getPortalTenants] Error getting tenants with agents for `",
         portalURL,
         "`:",
         error,
@@ -77,39 +84,70 @@ class DuploService {
     );
   }
 
+  async setTicketContext(payload: SetDuploContextPayload): Promise<any> {
+    console.info(
+      "[duplo-service/setTicketContext] Setting ticket context : ",
+      payload,
+    );
+    if (payload.type === DuploContextType.CREATE) {
+      return this.createAiTicket(payload);
+    } else if (payload.type === DuploContextType.UPDATE_AGENT) {
+      return this.updateTicketAgent(payload);
+    } else if (
+      payload.type === DuploContextType.UPDATE_TENANT ||
+      payload.type === DuploContextType.UPDATE_PORTAL
+    ) {
+      const { context, authToken, sessionId } = payload;
+      const { portal, tenant } = context;
+      const cntxPayload = {
+        portalUrl: portal,
+        tenantId: tenant?.tenantId as string,
+        ticketId: sessionId,
+        authToken: authToken,
+      };
+      const checkTicketInContext = await this.checkTicketInContext(cntxPayload);
+      if (checkTicketInContext) {
+        return this.setTicketUpdatedContext(cntxPayload);
+      } else {
+        return this.createAiTicket(payload);
+      }
+    }
+  }
+
   async createAiTicket(payload: {
-    portalUrl: string;
+    context: DuploContext;
     authToken?: string;
-    tenantId: string;
-    assignee: TicketAgent;
     userText: string;
     sessionId: string;
-  }): Promise<any> {
-    const { portalUrl, authToken, tenantId, assignee, userText, sessionId } =
-      payload;
-    console.info("[duplo/createAiTicket] Creating AI ticket : ", payload);
+  }): Promise<{ success: boolean; body: any }> {
+    const { context, authToken, userText, sessionId } = payload;
+    const { portal, tenant, agent } = context;
+    console.info(
+      "[duplo-service/createAiTicket] Creating AI ticket : ",
+      payload,
+    );
 
     const aiTicket = new CreateAiTicket({
       name: sessionId,
       title: userText,
-      assignee: assignee,
+      assignee: agent,
       platform_context: {
-        duplo_base_url: portalUrl,
+        duplo_base_url: portal,
         duplo_token: authToken,
       },
-      // historic_messages: msgHist,
-      // defaultAgentPermissions: defaultPerms,
-      // source: TicketSource.Slack,
       imAppDetails: {
         channelId: "continue.dev",
         threadId: sessionId,
       },
     });
 
-    console.info("[duplo/createAiTicket] Creating AI ticket : ", aiTicket);
+    console.info(
+      "[duplo-service/createAiTicket] Creating AI ticket : ",
+      aiTicket,
+    );
     try {
       const res = await fetchwithRequestOptions(
-        `${portalUrl}/v1/aiservicedesk/tickets/${tenantId}`,
+        `${portal}/v1/aiservicedesk/tickets/${tenant?.tenantId}`,
         {
           method: "POST",
           headers: {
@@ -122,24 +160,147 @@ class DuploService {
 
       const text = await res.text();
 
-      console.log("[duplo/createAiTicket] status=", res.status);
+      console.log("[duplo-service/createAiTicket] status=", res.status);
 
       try {
         const json: AiTicket[] = JSON.parse(text);
-        console.log("[duplo/createAiTicket] body=", json);
+        console.log("[duplo-service/createAiTicket] body=", json);
 
         return { success: true, body: json };
       } catch {
-        console.log("[duplo/createAiTicket] body=", text);
+        console.log("[duplo-service/createAiTicket] body=", text);
         return { success: false, body: "Invalid response format" };
       }
     } catch (error) {
       console.error(
-        "[duplo/createAiTicket] Error while getting creating AI ticket:",
+        "[duplo-service/createAiTicket] Error while getting creating AI ticket:",
         aiTicket,
         error,
       );
+      return { success: false, body: error };
+    }
+  }
+
+  async getAITicketById(
+    payload: {
+      portalUrl: string;
+      tenantId: string;
+      ticketId: string;
+      authToken: string;
+    },
+    canFail = false,
+  ): Promise<{ success: boolean; body: AiTicket | any }> {
+    const { portalUrl, tenantId, ticketId, authToken } = payload;
+    const url = `${portalUrl}/v1/aiservicedesk/tickets/${tenantId}/${ticketId}`;
+    try {
+      const response = await fetchwithRequestOptions(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "content-type": "application/json",
+        },
+      });
+      const text = await response.text();
+      try {
+        const json: AiTicket[] = JSON.parse(text);
+        console.log("[duplo-service/getAITicketById] body=", json);
+
+        return { success: true, body: json };
+      } catch {
+        console.log("[duplo-service/getAITicketById] body=", text);
+        return { success: false, body: "Invalid response format" };
+      }
+    } catch (error) {
+      console.error(
+        "[duplo-service/getAITicketById] Error while getting ticket by id:",
+        error,
+      );
+      if (canFail) return { success: false, body: error };
       throw error;
+    }
+  }
+
+  async checkTicketInContext(payload: {
+    portalUrl: string;
+    tenantId: string;
+    ticketId: string;
+    authToken: string;
+  }): Promise<boolean> {
+    try {
+      const response = await this.getAITicketById(payload, true);
+      const { success, body } = response;
+      if (!success || !body) return false;
+      return body?.name === payload.ticketId;
+    } catch (error) {
+      console.error("Ticket not found:", error);
+      return false;
+    }
+  }
+
+  async setTicketUpdatedContext(payload: {
+    portalUrl: string;
+    tenantId: string;
+    ticketId: string;
+    authToken: string;
+  }): Promise<{ success: boolean; body: any }> {
+    const { portalUrl, tenantId, ticketId, authToken } = payload;
+    const url = `${portalUrl}/v1/aiservicedesk/tickets/${tenantId}/${ticketId}/contextUpdated`;
+    try {
+      const response = await fetchwithRequestOptions(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "content-type": "application/json",
+        },
+      });
+      const text = await response.text();
+      try {
+        const json = JSON.parse(text);
+        console.log("[duplo-service/setTicketUpdatedContext] body=", json);
+        return { success: true, body: json };
+      } catch {
+        console.log("[duplo-service/setTicketUpdatedContext] body=", text);
+        return { success: false, body: "Invalid response format" };
+      }
+    } catch (error) {
+      console.error(
+        "[duplo-service/setTicketUpdatedContext]  Error while set ticket context updated:",
+        error,
+      );
+      return { success: false, body: error };
+    }
+  }
+
+  async updateTicketAgent(payload: {
+    context: DuploContext;
+    authToken: string;
+    sessionId: string;
+  }): Promise<{ success: boolean; body: any }> {
+    const { context, authToken, sessionId } = payload;
+    const { portal, tenant, agent } = context;
+
+    const url = `${portal}/v1/aiservicedesk/tickets/${tenant?.tenantId}/${sessionId}/assignee`;
+    try {
+      const response = await fetchwithRequestOptions(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(agent),
+      });
+      const text = await response.text();
+      try {
+        const json = JSON.parse(text);
+        console.log("[duplo-service/updateTicketAgent] body=", json);
+        return { success: true, body: json };
+      } catch {
+        console.log("[duplo-service/updateTicketAgent] body=", text);
+        return { success: false, body: "Invalid response format" };
+      }
+    } catch (error) {
+      console.error("Error while updating agent:", error);
+      return { success: false, body: error };
     }
   }
 }
