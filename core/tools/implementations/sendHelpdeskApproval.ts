@@ -18,13 +18,10 @@ export const sendHelpdeskApprovalImpl: ToolImpl = async (args, extras) => {
   try {
     // Reuse the same Duplo configuration pattern as sendHelpdeskMessageImpl
     const duploConfig = {
-      baseUrl: process.env.DUPLO_BASE_URL || "https://test10.duplocloud.net",
-      tenantId:
-        process.env.DUPLO_TENANT_ID || "fac0d44f-c170-47f2-815f-9420f7fd18ae",
-      ticketId: process.env.DUPLO_TICKET_ID || "ai-251107190427",
-      token:
-        process.env.DUPLO_TOKEN ||
-        "AQAAANCMnd8BFdERjHoAwE_Cl-sBAAAA0tnNtDk9lkK9nrQqpW5kBAAAAAACAAAAAAAQZgAAAAEAACAAAAAGsYWjAh1pNp3mY1ha2Gnas4XRF0eSsryFFWJ6KOkLjgAAAAAOgAAAAAIAACAAAAB76FaMPg7hDDgF240k1R9mX_SAgVZ2bSAan9H4SsioAcAAAAC_u5tS_Xz4NiqHlnKeO21qYbjNL-0wUbcnjjBRgrWjGij7eocaiXhtuUz2I9NOf9LiEMDjrrLDjaknk3UZFTf0cch3TVlvtRe15lOW3b02cibe3gBDM6P1Z06o2HO2WqUZfbs9VChYl3HWCIu5CdoU5SU9aV1uHQAGIkK0gx-YRJhZijqjwF93NHuhWm8N5dGVjT6uJmmZvu8P8ZRGPzTJOW5PusDmI6kQ5rm__yQBP7-KXHvFbMWX-YVqc7MrKrpAAAAAaTNURqjJc98UO13MlKw_CYk1_jewOBE7TLGRzkznEqSEPuFvuPo0CkN2c-8L-W96zjIjAWHUH5c1pjHJeZkxMw",
+      baseUrl: process.env.DUPLO_BASE_URL || "",
+      tenantId: process.env.DUPLO_TENANT_ID || "",
+      ticketId: process.env.DUPLO_TICKET_ID || "",
+      token: process.env.DUPLO_TOKEN || "",
     };
 
     if (!duploConfig.tenantId || !duploConfig.ticketId || !duploConfig.token) {
