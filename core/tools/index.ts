@@ -13,6 +13,8 @@ export const getBaseToolDefinitions = () => [
   toolDefinitions.lsTool,
   toolDefinitions.createRuleBlock,
   toolDefinitions.fetchUrlContentTool,
+  toolDefinitions.sendHelpdeskMessageTool,
+  toolDefinitions.sendHelpdeskApprovalTool,
 ];
 
 export const getConfigDependentToolDefinitions = (
