@@ -14,6 +14,8 @@ export { readFileRangeTool } from "./readFileRange";
 export { requestRuleTool } from "./requestRule";
 export { runTerminalCommandTool } from "./runTerminalCommand";
 export { searchWebTool } from "./searchWeb";
+export { sendHelpdeskMessageTool } from "./sendHelpdeskMessage";
+export { sendHelpdeskApprovalTool } from "./sendHelpdeskApproval";
 export { singleFindAndReplaceTool } from "./singleFindAndReplace";
 export { viewDiffTool } from "./viewDiff";
 export { viewRepoMapTool } from "./viewRepoMap";

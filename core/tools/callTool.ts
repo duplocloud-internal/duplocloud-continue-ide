@@ -19,6 +19,8 @@ import { readFileRangeImpl } from "./implementations/readFileRange";
 import { requestRuleImpl } from "./implementations/requestRule";
 import { runTerminalCommandImpl } from "./implementations/runTerminalCommand";
 import { searchWebImpl } from "./implementations/searchWeb";
+import { sendHelpdeskMessageImpl } from "./implementations/sendHelpdeskMessage";
+import { sendHelpdeskApprovalImpl } from "./implementations/sendHelpdeskApproval";
 import { viewDiffImpl } from "./implementations/viewDiff";
 import { viewRepoMapImpl } from "./implementations/viewRepoMap";
 import { viewSubdirectoryImpl } from "./implementations/viewSubdirectory";
@@ -165,6 +167,10 @@ export async function callBuiltInTool(
       return await runTerminalCommandImpl(args, extras);
     case BuiltInToolNames.SearchWeb:
       return await searchWebImpl(args, extras);
+    case BuiltInToolNames.SendHelpdeskMessage:
+      return await sendHelpdeskMessageImpl(args, extras);
+    case BuiltInToolNames.SendHelpdeskApproval:
+      return await sendHelpdeskApprovalImpl(args, extras);
     case BuiltInToolNames.FetchUrlContent:
       return await fetchUrlContentImpl(args, extras);
     case BuiltInToolNames.ViewDiff:
