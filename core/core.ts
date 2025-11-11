@@ -49,6 +49,7 @@ import {
   ModelDescription,
   Position,
   RangeInFile,
+  Session,
   ToolCall,
   type ContextItem,
   type IDE,
@@ -495,36 +496,6 @@ export class Core {
       await this.configHandler.openConfigProfile(msg.data.profileId);
     });
 
-    // Proxy Duplo GET /admin/GetTenantsForUser to avoid webview CORS
-    on("duplo/getPortalTenants", async (msg) => {
-      const { portal, token } = msg.data ?? {};
-      if (!portal) return { success: false, body: { error: "missing portal" } };
-      try {
-        return await duploContextService.getPortalTenants(portal, token);
-      } catch (e: any) {
-        console.warn("[duplo/proxy] request failed:", e?.message || e);
-        return {
-          success: false,
-          body: { error: e?.message || String(e) },
-        };
-      }
-    });
-
-    on("duplo/setTicketContext", async (msg) => {
-      const payload = msg.data ?? {};
-      if (!payload.sessionId)
-        return { success: false, body: { error: "missing sessionId" } };
-      try {
-        return await duploContextService.setTicketContext(payload);
-      } catch (e: any) {
-        console.warn("[duplo/proxy] request failed:", e?.message || e);
-        return {
-          success: false,
-          body: { error: e?.message || String(e) },
-        };
-      }
-    });
-
     on("config/ideSettingsUpdate", async (msg) => {
       await this.configHandler.updateIdeSettings(msg.data);
     });
@@ -583,6 +554,36 @@ export class Core {
 
     on("controlPlane/getCreditStatus", async (msg) => {
       return this.configHandler.controlPlaneClient.getCreditStatus();
+    });
+
+    // Proxy Duplo GET /admin/GetTenantsForUser to avoid webview CORS
+    on("duplo/getPortalTenants", async (msg) => {
+      const { portal, token } = msg.data ?? {};
+      if (!portal) return { success: false, body: { error: "missing portal" } };
+      try {
+        return await duploContextService.getPortalTenants(portal, token);
+      } catch (e: any) {
+        console.warn("[duplo/proxy] request failed:", e?.message || e);
+        return {
+          success: false,
+          body: { error: e?.message || String(e) },
+        };
+      }
+    });
+
+    on("duplo/setTicketContext", async (msg) => {
+      const payload = msg.data ?? {};
+      if (!payload.sessionId)
+        return { success: false, body: { error: "missing sessionId" } };
+      try {
+        return await duploContextService.setTicketContext(payload);
+      } catch (e: any) {
+        console.warn("[duplo/proxy] request failed:", e?.message || e);
+        return {
+          success: false,
+          body: { error: e?.message || String(e) },
+        };
+      }
     });
 
     on("mcp/reloadServer", async (msg) => {
@@ -1187,8 +1188,8 @@ export class Core {
       return { url };
     });
 
-    on("tools/call", async ({ data: { toolCall } }) =>
-      this.handleToolCall(toolCall),
+    on("tools/call", async ({ data: { toolCall, session } }) =>
+      this.handleToolCall(toolCall, session),
     );
 
     on(
@@ -1282,7 +1283,7 @@ export class Core {
     });
   }
 
-  private async handleToolCall(toolCall: ToolCall) {
+  private async handleToolCall(toolCall: ToolCall, session?: Session) {
     const { config } = await this.configHandler.loadConfig();
     if (!config) {
       throw new Error("Config not loaded");
@@ -1318,6 +1319,8 @@ export class Core {
       toolCallId: toolCall.id,
       onPartialOutput,
       codeBaseIndexer: this.codeBaseIndexer,
+      session,
+      messenger: this.messenger,
     });
 
     return result;

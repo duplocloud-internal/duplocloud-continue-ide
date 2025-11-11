@@ -1,5 +1,4 @@
 import { fetchwithRequestOptions } from "@continuedev/fetch";
-import { GlobalContext } from "../util/GlobalContext";
 import {
   AiTicket,
   CreateAiTicket,
@@ -22,9 +21,6 @@ class DuploService {
   }
 
   async getPortalTenants(portalURL: string, authToken?: string) {
-    const sharedConfig = new GlobalContext().getSharedConfig();
-    console.log("[duplo-service/getPortalTenants] sharedConfig", sharedConfig);
-
     const cachedTenants = this.cacheTenants.get(portalURL);
     if (cachedTenants && cachedTenants?.length > 0)
       return { success: true, body: cachedTenants };
@@ -300,6 +296,43 @@ class DuploService {
       }
     } catch (error) {
       console.error("Error while updating agent:", error);
+      return { success: false, body: error };
+    }
+  }
+
+  async sendHelpDeskMessage(payload: {
+    context: DuploContext;
+    authToken: string;
+    sessionId: string;
+    message: string;
+    agentName: string;
+  }): Promise<{ success: boolean; body: any }> {
+    const { context, authToken, sessionId, message, agentName } = payload;
+    const { portal, tenant } = context;
+    const url = `${portal}/v1/aiservicedesk/tickets/${tenant?.tenantId}/${sessionId}/sendmessage`;
+    try {
+      const response = await fetchwithRequestOptions(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          content: message,
+          data: {},
+        }),
+      });
+      const text = await response.text();
+      try {
+        const json = JSON.parse(text);
+        console.log("[duplo-service/sendHelpDeskMessage] body=", json);
+        return { success: true, body: json };
+      } catch {
+        console.error("[duplo-service/sendHelpDeskMessage] body=", text);
+        return { success: false, body: "Invalid response format" };
+      }
+    } catch (error) {
+      console.error("Error while sending message:", error);
       return { success: false, body: error };
     }
   }

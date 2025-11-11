@@ -1,4 +1,4 @@
-import { generateUniqueId } from "./utils";
+import { v4 as uuidv4 } from "uuid";
 
 export interface SetDuploContextPayload {
   context: DuploContext;
@@ -192,7 +192,7 @@ export class TerminalCommand {
   constructor(properties?: Partial<TerminalCommand>) {
     Object.assign(this, properties || {});
 
-    if (!this?.uid) this.uid = generateUniqueId();
+    if (!this?.uid) this.uid = uuidv4();
   }
 
   command: string = "";

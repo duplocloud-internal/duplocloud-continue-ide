@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { SecondaryButton } from "..";
 import { setDialogMessage, setShowDialog } from "../../redux/slices/uiSlice";
@@ -5,10 +6,21 @@ import { Card } from "../ui";
 
 function ContextUpdatedDialog({
   isUpdateContext,
+  isAutoClose = false,
 }: {
   isUpdateContext: boolean;
+  isAutoClose?: boolean;
 }) {
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (isAutoClose) {
+      setTimeout(() => {
+        dispatch(setShowDialog(false));
+        dispatch(setDialogMessage(undefined));
+      }, 5000);
+    }
+  }, [isAutoClose]);
 
   const onClose = () => {
     dispatch(setShowDialog(false));

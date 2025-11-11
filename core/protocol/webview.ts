@@ -1,6 +1,7 @@
 import { ConfigResult } from "@continuedev/config-yaml";
 import { SerializedOrgWithProfiles } from "../config/ProfileLifecycleManager.js";
 import { ControlPlaneSessionInfo } from "../control-plane/AuthTypes.js";
+import { DuploContext } from "../duplocloud/ai.model.js";
 import type {
   BrowserSerializedContinueConfig,
   ContextItemWithId,
@@ -44,4 +45,8 @@ export type ToWebviewFromIdeOrCoreProtocol = {
   sessionUpdate: [{ sessionInfo: ControlPlaneSessionInfo | undefined }, void];
   toolCallPartialOutput: [{ toolCallId: string; contextItems: any[] }, void];
   freeTrialExceeded: [undefined, void];
+  "tools-duplo/setDuploContext": [
+    void,
+    { success: boolean; duploContext?: DuploContext },
+  ];
 };

@@ -26,7 +26,10 @@ import Spinner from "../gui/Spinner";
 import { Card } from "../ui";
 import ContextUpdatedDialog from "./ContextUpdatedDialog";
 
-export const DuploContextDialog: React.FC = () => {
+export const DuploContextDialog: React.FC<{
+  sendToIDE?: boolean;
+  eventId?: string;
+}> = ({ sendToIDE = false, eventId = "" }) => {
   const dispatch = useAppDispatch();
   const ideMessenger = useContext(IdeMessengerContext);
   const isDialogOpen = useAppSelector((s) => s.ui.showDialog);
@@ -163,8 +166,15 @@ export const DuploContextDialog: React.FC = () => {
   }, [tenantsByPortal]);
 
   const onCloseDialog = useCallback(() => {
-    dispatch(setShowDialog(false));
+    if (sendToIDE) {
+      ideMessenger.respond(
+        "tools-duplo/setDuploContext",
+        { success: false },
+        eventId,
+      );
+    }
 
+    dispatch(setShowDialog(false));
     dispatch(setDialogMessage(undefined));
   }, [dispatch]);
 
@@ -227,9 +237,20 @@ export const DuploContextDialog: React.FC = () => {
         await dispatch(saveDuploContextSettings({ duploContext }));
         await dispatch(setDuploContext(duploContext));
 
+        if (sendToIDE) {
+          ideMessenger.respond(
+            "tools-duplo/setDuploContext",
+            { success: true, duploContext },
+            eventId,
+          );
+        }
+
         dispatch(
           setDialogMessage(
-            <ContextUpdatedDialog isUpdateContext={isUpdateContext.current} />,
+            <ContextUpdatedDialog
+              isUpdateContext={isUpdateContext.current}
+              isAutoClose={sendToIDE || false}
+            />,
           ),
         );
         dispatch(setShowDialog(true));

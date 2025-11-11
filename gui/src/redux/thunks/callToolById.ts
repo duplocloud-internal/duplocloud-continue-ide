@@ -85,8 +85,16 @@ export const callToolById = createAsyncThunk<
     streamResponse = respondImmediately;
   } else {
     // Tool is called on core side
+    const session = {
+      sessionId: state.session.id,
+      title: state.session.title,
+      workspaceDirectory: window.workspacePaths?.[0] || "",
+      history: state.session.history,
+      duploContext: state.session.duploContext,
+    };
     const result = await extra.ideMessenger.request("tools/call", {
       toolCall: toolCallState.toolCall,
+      session,
     });
     if (result.status === "error") {
       throw new Error(result.error);

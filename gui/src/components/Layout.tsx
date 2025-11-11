@@ -18,6 +18,7 @@ import { ROUTES } from "../util/navigation";
 import { FatalErrorIndicator } from "./config/FatalErrorNotice";
 import TextDialog from "./dialogs";
 import { GenerateRuleDialog } from "./GenerateRuleDialog";
+import ListenComponentEvents from "./ListenComponentEvents";
 import { useMainEditor } from "./mainInput/TipTapEditor";
 import {
   isNewUserOnboarding,
@@ -275,6 +276,7 @@ const Layout = () => {
                 {!isHome && <FatalErrorIndicator />}
               </GridDiv>
             </div>
+            <ListenComponentEvents />
             <div style={{ fontSize: fontSize(-4) }} id="tooltip-portal-div" />
           </LayoutTopDiv>
         </TelemetryProviders>

@@ -1093,6 +1093,8 @@ export interface ToolExtras {
   }) => void;
   config: ContinueConfig;
   codeBaseIndexer?: CodebaseIndexer;
+  session?: Session;
+  messenger?: any; // IMessenger<ToCoreProtocol, FromCoreProtocol>
 }
 
 export interface Tool {
@@ -1409,7 +1411,7 @@ export interface ContinueUIConfig {
   codeWrap?: boolean;
   showSessionTabs?: boolean;
   continueAfterToolRejection?: boolean;
-  duplo?: DuploPortal;
+  duplo?: DuploPortal[];
 }
 
 export interface ContextMenuConfig {
