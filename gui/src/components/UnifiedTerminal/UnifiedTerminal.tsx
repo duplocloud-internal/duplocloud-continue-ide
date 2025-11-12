@@ -61,7 +61,7 @@ const AnsiLink = styled.a`
   }
 `;
 
-const StyledTerminalContainer = styled.div<{
+export const StyledTerminalContainer = styled.div<{
   fontSize?: number;
 }>`
   background-color: var(--background);
@@ -85,7 +85,7 @@ const StyledTerminalContainer = styled.div<{
   }
 `;
 
-const TerminalContent = styled.div`
+export const TerminalContent = styled.div`
   pre {
     white-space: pre-wrap;
     max-width: calc(100vw - 24px);

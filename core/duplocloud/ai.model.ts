@@ -1,11 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 
-export interface SetDuploContextPayload {
+export interface DuploContextPayload {
   context: DuploContext;
-  type: DuploContextType;
   authToken: string;
-  userText: string;
   sessionId: string;
+  userText?: string;
+  type?: DuploContextType;
 }
 
 export enum DuploContextType {
@@ -147,8 +147,8 @@ export enum TicketSource {
   Slack = 1,
 }
 
-export class AgentResponse {
-  constructor(properties?: Partial<AgentResponse>) {
+export class DuploAgentResponse {
+  constructor(properties?: Partial<DuploAgentResponse>) {
     Object.assign(this, properties || {});
   }
 
@@ -183,10 +183,9 @@ export class UserMessage {
   id?: string;
   timeStamp?: string;
   thread_id?: string;
-  agent_managed_memory: boolean = false;
 }
 
-export type MessageResponse = UserMessage | AgentResponse;
+export type MessageResponse = UserMessage | DuploAgentResponse;
 
 export class TerminalCommand {
   constructor(properties?: Partial<TerminalCommand>) {
@@ -259,5 +258,15 @@ export class ToolResponse {
 
     if (!this?.selectionType) this.selectionType = null;
     if (!this?.id) this.id = null;
+  }
+
+  toPayload(): ToolResponse {
+    return {
+      ...this,
+      selectionType: undefined,
+      selectionMessage: undefined,
+      isExpanded: undefined,
+      execute: this.selectionType === "Approved",
+    };
   }
 }

@@ -1,7 +1,11 @@
 import { ConfigResult } from "@continuedev/config-yaml";
 import { SerializedOrgWithProfiles } from "../config/ProfileLifecycleManager.js";
 import { ControlPlaneSessionInfo } from "../control-plane/AuthTypes.js";
-import { DuploContext } from "../duplocloud/ai.model.js";
+import {
+  DuploAgentResponse,
+  DuploContext,
+  TerminalCommand,
+} from "../duplocloud/ai.model.js";
 import type {
   BrowserSerializedContinueConfig,
   ContextItemWithId,
@@ -48,5 +52,9 @@ export type ToWebviewFromIdeOrCoreProtocol = {
   "tools-duplo/setDuploContext": [
     void,
     { success: boolean; duploContext?: DuploContext },
+  ];
+  "tools-duplo/approveActions": [
+    { agentResponse: DuploAgentResponse; toolCallId: string },
+    { success: boolean; cmdList?: TerminalCommand[] },
   ];
 };

@@ -17,7 +17,7 @@ export enum BuiltInToolNames {
   FetchUrlContent = "fetch_url_content",
   CodebaseTool = "codebase",
   SendHelpdeskMessage = "send_helpdesk_message",
-  SendHelpdeskApproval = "send_helpdesk_approval",
+  // SendHelpdeskApproval = "send_helpdesk_approval",
 
   // excluded from allTools for now
   ViewRepoMap = "view_repo_map",

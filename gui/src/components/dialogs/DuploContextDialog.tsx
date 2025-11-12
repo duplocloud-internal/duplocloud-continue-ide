@@ -1,8 +1,8 @@
 import {
   DuploContext,
+  DuploContextPayload,
   DuploContextType,
   DuploPortal,
-  SetDuploContextPayload,
   TenantsWithAgents,
   TicketAgent,
 } from "core/duplocloud/ai.model";
@@ -204,7 +204,7 @@ export const DuploContextDialog: React.FC<{
         }
       }
 
-      const payload: SetDuploContextPayload = {
+      const payload: DuploContextPayload = {
         context: {
           portal,
           tenant: {

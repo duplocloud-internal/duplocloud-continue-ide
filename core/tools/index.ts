@@ -14,7 +14,7 @@ export const getBaseToolDefinitions = () => [
   toolDefinitions.createRuleBlock,
   toolDefinitions.fetchUrlContentTool,
   toolDefinitions.sendHelpdeskMessageTool,
-  toolDefinitions.sendHelpdeskApprovalTool,
+  // toolDefinitions.sendHelpdeskApprovalTool,
 ];
 
 export const getConfigDependentToolDefinitions = (

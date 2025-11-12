@@ -49,7 +49,7 @@ import {
   ControlPlaneSessionInfo,
 } from "../control-plane/AuthTypes";
 import { CreditStatus, RemoteSessionMetadata } from "../control-plane/client";
-import { SetDuploContextPayload } from "../duplocloud/ai.model";
+import { DuploContextPayload } from "../duplocloud/ai.model";
 import { ProcessedItem } from "../nextEdit/NextEditPrefetchQueue";
 import { NextEditOutcome } from "../nextEdit/types";
 import { ContinueErrorReason } from "../util/errors";
@@ -351,7 +351,7 @@ export type ToCoreFromIdeOrWebviewProtocol = {
     { success: boolean; body: any },
   ];
   "duplo/setTicketContext": [
-    SetDuploContextPayload,
+    DuploContextPayload,
     { success: boolean; body: any },
   ];
 };

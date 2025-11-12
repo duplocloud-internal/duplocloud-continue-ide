@@ -3,6 +3,7 @@ import { ToolCallState } from "core";
 import { BuiltInToolNames } from "core/tools/builtIn";
 import { useState } from "react";
 import { useAppSelector } from "../../../redux/hooks";
+import { DuploToolEvent } from "./duplo/DuploToolEvent";
 import FunctionSpecificToolCallDiv from "./FunctionSpecificToolCallDiv";
 import { GroupedToolCallHeader } from "./GroupedToolCallHeader";
 import { SimpleToolCallUI } from "./SimpleToolCallUI";
@@ -41,6 +42,18 @@ export function ToolCallDiv({
       functionName && tool?.toolCallIcon
         ? getIconByName(tool.toolCallIcon)
         : undefined;
+
+    if (functionName === BuiltInToolNames.SendHelpdeskMessage) {
+      return (
+        <div className="flex flex-col px-1">
+          <DuploToolEvent
+            tool={tool}
+            toolCallState={toolCallState}
+            historyIndex={historyIndex}
+          />
+        </div>
+      );
+    }
 
     if (icon) {
       return (

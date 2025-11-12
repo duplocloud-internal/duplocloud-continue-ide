@@ -114,4 +114,5 @@ export const CORE_TO_WEBVIEW_PASS_THROUGH: (keyof ToWebviewFromCoreProtocol)[] =
     "toolCallPartialOutput",
     "freeTrialExceeded",
     "tools-duplo/setDuploContext",
+    "tools-duplo/approveActions",
   ];
