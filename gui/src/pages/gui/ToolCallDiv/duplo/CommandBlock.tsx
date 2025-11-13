@@ -41,7 +41,9 @@ export function CommandBlock({
                 {isExecuted && (
                   <>
                     <div>Output:</div>
-                    <div>{cmd.output}</div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {cmd.output}
+                    </div>
                   </>
                 )}
               </code>

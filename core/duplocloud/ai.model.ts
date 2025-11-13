@@ -277,14 +277,27 @@ export function getDuploResponseListStr(
 ): string {
   if (!Array.isArray(respList) || !respList?.length) return "";
 
-  const parsedList: DuploAgentResponse[] = respList.map((resp: any) => ({
-    content: resp.content,
-    data: resp.data,
-    role: resp.role,
-    id: resp.id,
-    timeStamp: resp.timeStamp,
-    thread_id: resp.thread_id,
-  }));
+  const parsedList: DuploAgentResponse[] = respList.map((resp: any) => {
+    const respData: AgentResponseData = {};
+
+    if (resp.data?.duplo_url) respData.duplo_url = resp.data?.duplo_url;
+    if (resp.data?.cmds?.length) respData.cmds = resp.data?.cmds;
+    if (resp.data?.executed_cmds?.length)
+      respData.executed_cmds = resp.data?.executed_cmds;
+    if (resp.data?.tool_calls?.length)
+      respData.tool_calls = resp.data?.tool_calls;
+    if (resp.data?.url_configs?.length)
+      respData.url_configs = resp.data?.url_configs;
+
+    return {
+      content: resp.content,
+      role: resp.role,
+      id: resp.id,
+      data: respData,
+      timeStamp: resp.timeStamp,
+      thread_id: resp.thread_id,
+    };
+  });
 
   return encode(parsedList);
 }

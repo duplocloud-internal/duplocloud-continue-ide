@@ -58,7 +58,7 @@ export function DuploCommandDisplay({
   const isDisabled = !isActive || isSubmited;
 
   return (
-    <div className="bg-editor rounded-default mb-4 flex flex-col px-4 py-0">
+    <div className="bg-editor rounded-default mb-3 flex flex-col px-3 py-0">
       {agentResponse.content && (
         <div className="border-vscode-textBlockQuote-border rounded border-l-4 text-sm">
           <ReactMarkdown>{agentResponse.content}</ReactMarkdown>

@@ -2,6 +2,7 @@ import { ToolExtras } from "..";
 import {
   DuploAgentResponse,
   DuploContext,
+  DuploToolState,
   TerminalCommand,
 } from "../duplocloud/ai.model";
 
@@ -63,6 +64,24 @@ export function sendAgentResponse(
 
   extras.messenger.request("tools-duplo/approveActions", {
     agentResponse,
+    toolCallId: extras.toolCallId,
+  });
+}
+
+export function sendDuploToolState(
+  extras: ToolExtras,
+  status: {
+    text: string;
+    state: DuploToolState;
+  },
+): void {
+  // Check if messenger is available
+  if (!extras.messenger) {
+    return;
+  }
+
+  extras.messenger.request("tools-duplo/displayToolState", {
+    status,
     toolCallId: extras.toolCallId,
   });
 }

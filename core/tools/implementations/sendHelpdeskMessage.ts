@@ -4,6 +4,7 @@ import {
   DuploContext,
   DuploContextPayload,
   DuploPortal,
+  DuploToolState,
   getDuploResponseListStr,
 } from "../../duplocloud/ai.model";
 import duploService from "../../duplocloud/duplo-service";
@@ -11,6 +12,7 @@ import {
   requestApproveCommands,
   requestDuploContext,
   sendAgentResponse,
+  sendDuploToolState,
 } from "../duploGuiEvent";
 import { getStringArg } from "../parseArgs";
 
@@ -34,10 +36,22 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
 
   // Validate required configuration
   if (!duploContext?.portal) {
+    sendDuploToolState(extras, {
+      text: "Setting DuploCloud context",
+      state: DuploToolState.PENDING,
+    });
     const duploContextRequest = await requestDuploContext(extras);
     if (duploContextRequest.success) {
       duploContext = duploContextRequest.duploContext;
+      sendDuploToolState(extras, {
+        text: "DuploCloud Context set successfully",
+        state: DuploToolState.SUCCESS,
+      });
     } else {
+      sendDuploToolState(extras, {
+        text: "Context setup cancelled",
+        state: DuploToolState.FAILED,
+      });
       return [
         {
           name: "Context Not Set",
@@ -53,6 +67,7 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
   const agentName = getStringArg(args, "agent_name");
   const message = getStringArg(args, "message");
   const respList: DuploAgentResponse[] = [];
+
   const { success: lastSuccess, error: lastError } =
     await processHelpDeskResponse(
       {
@@ -67,13 +82,16 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
     );
 
   console.log("[sendHelpdeskMessageImpl] respList: ", respList);
+  console.log("[sendHelpdeskMessageImpl] Last Error: ", lastError);
 
   const responseStr = getDuploResponseListStr(respList);
 
   console.log("[sendHelpdeskMessageImpl] Response String: ", responseStr);
-  console.log("[sendHelpdeskMessageImpl] Last Error: ", lastError);
-
   if (!lastSuccess && !responseStr.length) {
+    sendDuploToolState(extras, {
+      text: "Helpdesk request failed",
+      state: DuploToolState.FAILED,
+    });
     return [
       {
         name: "Helpdesk Error",
@@ -83,6 +101,11 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
       },
     ];
   }
+
+  sendDuploToolState(extras, {
+    text: "Helpdesk request processed successfully",
+    state: DuploToolState.SUCCESS,
+  });
 
   return [
     {
@@ -132,13 +155,29 @@ async function processHelpDeskResponse(
       return { success: true };
     }
 
+    sendDuploToolState(extras, {
+      text: "Waiting for command approval",
+      state: DuploToolState.PENDING,
+    });
+
     const { success: cmdApproved, cmdList: approvedCmds } =
       await requestApproveCommands(extras, lastResp);
 
-    if (!cmdApproved || !approvedCmds?.length) return { success: false };
+    if (!cmdApproved || !approvedCmds?.length) {
+      sendDuploToolState(extras, {
+        text: "Commands not approved",
+        state: DuploToolState.FAILED,
+      });
+      return { success: false };
+    }
 
     actions = { cmdList: approvedCmds };
   }
+
+  sendDuploToolState(extras, {
+    text: "Sending request to AI Helpdesk",
+    state: DuploToolState.PENDING,
+  });
 
   try {
     const { success, body } = await duploService.sendHelpDeskMessage(
@@ -146,11 +185,24 @@ async function processHelpDeskResponse(
       actions,
     );
 
-    if (!success) return { success: false, error: body as string };
+    if (!success) {
+      sendDuploToolState(extras, {
+        text: "Helpdesk request failed",
+        state: DuploToolState.FAILED,
+      });
+      return { success: false, error: body as string };
+    }
 
     const agentResp: DuploAgentResponse = body as DuploAgentResponse;
 
-    return processHelpDeskResponse(
+    if (recursionDepth > 0) {
+      sendDuploToolState(extras, {
+        text: `Processing Helpdesk response`,
+        state: DuploToolState.PENDING,
+      });
+    }
+
+    return await processHelpDeskResponse(
       {
         ...payload,
         userText: "",
@@ -163,6 +215,11 @@ async function processHelpDeskResponse(
     );
   } catch (error) {
     console.error("processHelpDeskResponse error", error);
+
+    sendDuploToolState(extras, {
+      text: "Helpdesk request failed",
+      state: DuploToolState.FAILED,
+    });
 
     return {
       success: false,
