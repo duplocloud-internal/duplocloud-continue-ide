@@ -5,17 +5,17 @@ import { Button } from "../../../../components";
 import { IdeMessengerContext } from "../../../../context/IdeMessenger";
 import { CommandBlock } from "./CommandBlock";
 
-interface DuploCommandDisplayProps {
+interface DuploResponseDisplayProps {
   agentResponse: DuploAgentResponse;
   eventId: string;
   isActive: boolean;
 }
 
-export function DuploCommandDisplay({
+export function DuploResponseDisplay({
   agentResponse,
   eventId,
   isActive,
-}: DuploCommandDisplayProps) {
+}: DuploResponseDisplayProps) {
   const ideMessenger = useContext(IdeMessengerContext);
   const [cmdList, setCmdList] = useState<TerminalCommand[]>([]);
   const [isSubmited, setIsSubmited] = useState(false);
@@ -23,10 +23,14 @@ export function DuploCommandDisplay({
   useEffect(() => {
     if (!agentResponse.data?.cmds?.length) return;
     setCmdList(
-      agentResponse.data?.cmds?.map((cmd) => ({
-        ...cmd,
-        selectionType: "Approved",
-      })) || [],
+      agentResponse.data?.cmds?.map((cmd) =>
+        isActive
+          ? {
+              ...cmd,
+              selectionType: "Approved",
+            }
+          : cmd,
+      ) || [],
     );
   }, [agentResponse, eventId]);
 

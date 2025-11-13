@@ -1,4 +1,3 @@
-import { encode } from "@toon-format/toon";
 import { v4 as uuidv4 } from "uuid";
 
 export interface DuploContextPayload {
@@ -159,6 +158,7 @@ export class DuploAgentResponse {
   id?: string;
   timeStamp?: string;
   thread_id?: string;
+  name?: string;
 }
 
 export class AgentResponseData {
@@ -168,7 +168,7 @@ export class AgentResponseData {
   duplo_url?: string;
   cmds?: TerminalCommand[];
   executed_cmds?: TerminalCommand[];
-  tool_calls?: ToolResponse[];
+  tool_calls?: DuploToolResponse[];
   url_configs?: URlBox[];
 }
 
@@ -184,6 +184,7 @@ export class UserMessage {
   id?: string;
   timeStamp?: string;
   thread_id?: string;
+  name?: string;
 }
 
 export type MessageResponse = UserMessage | DuploAgentResponse;
@@ -209,6 +210,7 @@ export class TerminalCommand {
 export class URlBox {
   constructor(properties?: Partial<URlBox>) {
     Object.assign(this, properties || {});
+    if (!this?.uid) this.uid = uuidv4();
   }
   url: string = "";
   description?: string;
@@ -225,7 +227,7 @@ export class MessagePayload {
     duplo_url?: string;
     cmds?: TerminalCommand[];
     executed_cmds?: TerminalCommand[];
-    tool_calls?: ToolResponse[];
+    tool_calls?: DuploToolResponse[];
   };
   platform_context?: Record<string, any>;
 
@@ -243,7 +245,7 @@ export interface ToolInput {
   [key: string]: any;
 }
 
-export class ToolResponse {
+export class DuploToolResponse {
   id?: string | null;
   name?: string;
   input?: ToolInput;
@@ -254,14 +256,24 @@ export class ToolResponse {
   rejection_reason?: string;
   selectionType?: string | null;
 
-  constructor(properties?: Partial<ToolResponse>) {
+  constructor(properties?: Partial<DuploToolResponse>) {
     Object.assign(this, properties || {});
 
     if (!this?.selectionType) this.selectionType = null;
-    if (!this?.id) this.id = null;
+    if (!this?.id) this.id = uuidv4();
   }
 
-  toPayload(): ToolResponse {
+  static fromJsonArray(
+    respArray: DuploToolResponse[] | undefined,
+  ): DuploToolResponse[] {
+    if (!Array.isArray(respArray)) return [];
+
+    return respArray
+      .filter((tl) => tl?.id)
+      .map((tl) => new DuploToolResponse(tl));
+  }
+
+  toPayload(): DuploToolResponse {
     return {
       ...this,
       selectionType: undefined,
@@ -270,36 +282,6 @@ export class ToolResponse {
       execute: this.selectionType === "Approved",
     };
   }
-}
-
-export function getDuploResponseListStr(
-  respList: DuploAgentResponse[],
-): string {
-  if (!Array.isArray(respList) || !respList?.length) return "";
-
-  const parsedList: DuploAgentResponse[] = respList.map((resp: any) => {
-    const respData: AgentResponseData = {};
-
-    if (resp.data?.duplo_url) respData.duplo_url = resp.data?.duplo_url;
-    if (resp.data?.cmds?.length) respData.cmds = resp.data?.cmds;
-    if (resp.data?.executed_cmds?.length)
-      respData.executed_cmds = resp.data?.executed_cmds;
-    if (resp.data?.tool_calls?.length)
-      respData.tool_calls = resp.data?.tool_calls;
-    if (resp.data?.url_configs?.length)
-      respData.url_configs = resp.data?.url_configs;
-
-    return {
-      content: resp.content,
-      role: resp.role,
-      id: resp.id,
-      data: respData,
-      timeStamp: resp.timeStamp,
-      thread_id: resp.thread_id,
-    };
-  });
-
-  return encode(parsedList);
 }
 
 export enum DuploToolState {

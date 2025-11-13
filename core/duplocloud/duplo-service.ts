@@ -1,17 +1,17 @@
 import { fetchwithRequestOptions } from "@continuedev/fetch";
 import {
   AiTicket,
+  ChatRole,
   CreateAiTicket,
   DuploAgentResponse,
   DuploContext,
   DuploContextPayload,
   DuploContextType,
   TenantsWithAgents,
-  TerminalCommand,
   TicketAgent,
-  ToolResponse,
   UserMessage,
 } from "./ai.model";
+import { createChatMessage } from "./ai.utils";
 
 class DuploService {
   cacheTenants: Map<string, TenantsWithAgents[]> = new Map();
@@ -318,44 +318,23 @@ class DuploService {
   }
 
   async sendHelpDeskMessage(
-    payload: DuploContextPayload,
-    actions?: { cmdList?: TerminalCommand[]; toolCalls?: ToolResponse[] },
+    contextDetails: DuploContextPayload,
+    payload?: UserMessage,
   ): Promise<{ success: boolean; body: DuploAgentResponse | string }> {
-    console.log("[duplo-service/sendHelpDeskMessage] payload=", payload);
-    console.log("[duplo-service/sendHelpDeskMessage] actions=", actions);
+    console.log(
+      "[duplo-service/sendHelpDeskMessage] contextDetails=",
+      contextDetails,
+    );
+    console.log(
+      "[duplo-service/sendHelpDeskMessage] UserMessage payload=",
+      payload,
+    );
 
-    const { context, authToken, sessionId, userText } = payload;
+    const { context, authToken, sessionId } = contextDetails;
     const { portal, tenant } = context;
     const url = `${portal}/v1/aiservicedesk/tickets/${tenant?.tenantId}/${sessionId}/sendmessage`;
 
-    const { cmdList, toolCalls } = actions || {};
-
-    const typeList = ["approved", "rejected"];
-    const cmds = cmdList?.length
-      ? cmdList
-          .filter(
-            (cmd) =>
-              !typeList.includes(cmd?.selectionType?.toLowerCase() || ""),
-          )
-          .map((cmd) => ({
-            command: cmd.command,
-            execute: cmd.execute || cmd.selectionType === "Approved",
-          }))
-      : undefined;
-
-    const tool_calls = toolCalls?.length
-      ? toolCalls?.map((tl) => {
-          const tool = new ToolResponse(tl);
-          return tool.toPayload();
-        })
-      : undefined;
-
-    const msgBody: UserMessage = {
-      content: userText || getUserMessage(cmds || [], tool_calls || []),
-      data: { cmds, tool_calls },
-    };
-
-    console.log("[duplo-service/sendHelpDeskMessage] msgBody=", msgBody);
+    console.log("[duplo-service/sendHelpDeskMessage] msgBody=", payload);
 
     try {
       const response = await fetchwithRequestOptions(url, {
@@ -364,13 +343,19 @@ class DuploService {
           Authorization: `Bearer ${authToken}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify(msgBody),
+        body: JSON.stringify(payload),
       });
       const text = await response.text();
       try {
         const json = JSON.parse(text);
         console.log("[duplo-service/sendHelpDeskMessage] body=", json);
-        return { success: true, body: json };
+        return {
+          success: true,
+          body: createChatMessage(
+            json,
+            ChatRole.ASSISTANT,
+          ) as DuploAgentResponse,
+        };
       } catch {
         console.error("[duplo-service/sendHelpDeskMessage] body=", text);
         return { success: false, body: "Invalid response format" };
@@ -388,35 +373,3 @@ class DuploService {
 const duploContextService = new DuploService();
 
 export default duploContextService;
-
-function getUserMessage(
-  blockCmdList: TerminalCommand[],
-  blockToolList: ToolResponse[],
-): string {
-  if (blockCmdList.length === 0 && blockToolList.length === 0) return "";
-
-  // Count approvals and rejections
-  const cmdApproved = blockCmdList.filter((cmd) => cmd?.execute).length;
-  const cmdRejected = blockCmdList.filter((cmd) => !cmd?.execute).length;
-  const toolApproved = blockToolList.filter((tool) => tool?.execute).length;
-  const toolRejected = blockToolList.filter((tool) => !tool?.execute).length;
-
-  // Build message parts
-  const messageParts = [
-    createMessagePart(cmdApproved, "approve", "command"),
-    createMessagePart(cmdRejected, "reject", "command"),
-    createMessagePart(toolApproved, "approve", "tool"),
-    createMessagePart(toolRejected, "reject", "tool"),
-  ].filter(Boolean); // Remove null/undefined values
-
-  return messageParts.length ? `I ${messageParts.join(", ")} .` : "";
-}
-
-function createMessagePart(
-  count: number,
-  action: string,
-  itemType: string,
-): string | null {
-  if (count <= 0) return null;
-  return `${action} ${count} ${itemType}${count > 1 ? "s" : ""}`;
-}

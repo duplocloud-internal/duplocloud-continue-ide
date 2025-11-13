@@ -4,9 +4,15 @@ import {
   DuploContext,
   DuploContextPayload,
   DuploPortal,
+  DuploToolResponse,
   DuploToolState,
-  getDuploResponseListStr,
+  MessageResponse,
+  TerminalCommand,
 } from "../../duplocloud/ai.model";
+import {
+  generateUserMessagePayload,
+  getDuploResponseListStr,
+} from "../../duplocloud/ai.utils";
 import duploService from "../../duplocloud/duplo-service";
 import {
   requestApproveCommands,
@@ -66,7 +72,7 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
   const authToken = duploPortals.find((dp) => dp.portal === portal)?.token;
   const agentName = getStringArg(args, "agent_name");
   const message = getStringArg(args, "message");
-  const respList: DuploAgentResponse[] = [];
+  const messageList: MessageResponse[] = [];
 
   const { success: lastSuccess, error: lastError } =
     await processHelpDeskResponse(
@@ -78,13 +84,13 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
       },
       message,
       extras,
-      respList,
+      messageList,
     );
 
-  console.log("[sendHelpdeskMessageImpl] respList: ", respList);
+  console.log("[sendHelpdeskMessageImpl] messageList: ", messageList);
   console.log("[sendHelpdeskMessageImpl] Last Error: ", lastError);
 
-  const responseStr = getDuploResponseListStr(respList);
+  const responseStr = getDuploResponseListStr(messageList);
 
   console.log("[sendHelpdeskMessageImpl] Response String: ", responseStr);
   if (!lastSuccess && !responseStr.length) {
@@ -97,7 +103,7 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
         name: "Helpdesk Error",
         description: "Failed to send message to DuploCloud helpdesk",
         content: `Error sending message to DuploCloud helpdesk: ${lastError}`,
-        data: respList,
+        data: messageList,
       },
     ];
   }
@@ -119,7 +125,7 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
         (!lastSuccess && lastError
           ? `\n\n But Error occurred in processing last helpdesk response: ${lastError}`
           : ""),
-      data: respList,
+      data: messageList,
     },
   ];
 };
@@ -130,11 +136,14 @@ async function processHelpDeskResponse(
   payload: DuploContextPayload,
   message: string,
   extras: any,
-  respList: DuploAgentResponse[],
+  messageList: MessageResponse[],
   lastResp?: DuploAgentResponse,
   recursionDepth: number = 0,
 ): Promise<{ success: boolean; error?: string }> {
-  let actions = {};
+  let actions: {
+    cmdList?: TerminalCommand[];
+    toolCalls?: DuploToolResponse[];
+  } = {};
   const hasLastResp =
     lastResp !== undefined &&
     lastResp !== null &&
@@ -145,7 +154,7 @@ async function processHelpDeskResponse(
   );
 
   if (hasLastResp) {
-    respList.push(lastResp);
+    messageList.push(lastResp);
 
     if (
       !lastResp?.data?.cmds?.length ||
@@ -180,9 +189,14 @@ async function processHelpDeskResponse(
   });
 
   try {
+    const userMsg = generateUserMessagePayload(
+      message,
+      actions?.cmdList,
+      actions?.toolCalls,
+    );
     const { success, body } = await duploService.sendHelpDeskMessage(
       payload,
-      actions,
+      userMsg,
     );
 
     if (!success) {
@@ -202,6 +216,7 @@ async function processHelpDeskResponse(
       });
     }
 
+    messageList.push(userMsg);
     return await processHelpDeskResponse(
       {
         ...payload,
@@ -209,7 +224,7 @@ async function processHelpDeskResponse(
       },
       message,
       extras,
-      respList,
+      messageList,
       agentResp,
       recursionDepth + 1,
     );
