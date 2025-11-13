@@ -4,9 +4,9 @@ import { BUILT_IN_GROUP_NAME, BuiltInToolNames } from "../builtIn";
 export const sendHelpdeskMessageTool: Tool = {
   type: "function",
   displayTitle: "Send Helpdesk Message",
-  wouldLikeTo: "send a message to the helpdesk",
-  isCurrently: "sending a message to the helpdesk",
-  hasAlready: "sent a message to the helpdesk",
+  wouldLikeTo: "send a message to the AI Helpdesk",
+  isCurrently: "sending a message to the AI Helpdesk",
+  hasAlready: "sent a message to the AI Helpdesk",
   readonly: false,
   isInstant: false,
   group: BUILT_IN_GROUP_NAME,

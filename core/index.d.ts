@@ -453,6 +453,7 @@ export interface ContextItem {
   uri?: ContextItemUri;
   hidden?: boolean;
   status?: string;
+  data?: any;
 }
 
 export interface ContextItemWithId extends ContextItem {

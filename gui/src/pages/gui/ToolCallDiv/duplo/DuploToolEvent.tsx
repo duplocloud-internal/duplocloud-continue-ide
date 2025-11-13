@@ -1,5 +1,5 @@
 import { ToolCallState } from "core";
-import { DuploAgentResponse } from "core/duplocloud/ai.model";
+import { DuploAgentResponse, DuploToolState } from "core/duplocloud/ai.model";
 import { useEffect, useRef, useState } from "react";
 import { ToolCallStatusMessage } from "../ToolCallStatusMessage";
 import { ToolTruncateHistoryIcon } from "../ToolTruncateHistoryIcon";
@@ -29,34 +29,47 @@ export function DuploToolEvent({
   const stateMap = useRef<Map<string, DuploToolEventState>>(new Map());
   const [stateList, setStateList] = useState<DuploToolEventState[]>([]);
 
+  const [status, setStatus] = useState<{
+    text: string;
+    state: DuploToolState;
+  }>();
+
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       const message = event.data;
-      const messageType = message.messageType;
 
+      const data = message.data;
+      const toolCallId = data.toolCallId as string;
       if (
-        messageType !== "tools-duplo/approveActions" ||
+        toolCallId !== toolCallState.toolCallId ||
         toolCallState.status === "done"
       )
         return;
 
-      const data = message.data;
-      const toolCallId = data.toolCallId as string;
-      if (toolCallId !== toolCallState.toolCallId) return;
+      const messageType = message.messageType;
+      if (messageType === "tools-duplo/approveActions") {
+        const messageId = message.messageId;
+        const agentResponse = data.agentResponse as DuploAgentResponse;
+        console.log("DuploToolEvent agentResponse", agentResponse);
+        const state = {
+          agentResponse,
+          responseId: agentResponse.id as string,
+          eventId: messageId,
+          isActive: true,
+        };
 
-      const messageId = message.messageId;
-      const agentResponse = data.agentResponse as DuploAgentResponse;
-      console.log("DuploToolEvent agentResponse", agentResponse);
-      const state = {
-        agentResponse,
-        responseId: agentResponse.id as string,
-        eventId: messageId,
-        isActive: true,
-      };
+        stateMap.current.set(toolCallState.toolCallId, state);
 
-      stateMap.current.set(toolCallState.toolCallId, state);
+        setStateList((prev) => [...prev, state]);
+      }
 
-      setStateList((prev) => [...prev, state]);
+      if (messageType === "tools-duplo/displayToolState") {
+        const state = data.state as {
+          text: string;
+          state: DuploToolState;
+        };
+        setStatus(state);
+      }
     };
 
     window.addEventListener("message", handleMessage);

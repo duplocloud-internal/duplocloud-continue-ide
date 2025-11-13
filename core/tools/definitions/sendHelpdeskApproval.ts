@@ -1,5 +1,5 @@
 import { Tool } from "../..";
-import { BUILT_IN_GROUP_NAME, BuiltInToolNames } from "../builtIn";
+import { BUILT_IN_GROUP_NAME } from "../builtIn";
 
 export const sendHelpdeskApprovalTool: Tool = {
   type: "function",
@@ -11,7 +11,8 @@ export const sendHelpdeskApprovalTool: Tool = {
   isInstant: false,
   group: BUILT_IN_GROUP_NAME,
   function: {
-    name: BuiltInToolNames.SendHelpdeskApproval,
+    // name: BuiltInToolNames.SendHelpdeskApproval,
+    name: "sendHelpdeskApproval",
     description:
       "Use this tool to submit an approval or acknowledgement to the DuploCloud helpdesk, approving one or more commands returned by a prior helpdesk response.",
     parameters: {
@@ -36,7 +37,7 @@ export const sendHelpdeskApprovalTool: Tool = {
     },
   },
   systemMessageDescription: {
-    prefix: `To approve commands returned by the helpdesk, use the ${BuiltInToolNames.SendHelpdeskApproval} tool with an array of command strings. For example:`,
+    prefix: `To approve commands returned by the helpdesk, use the sendHelpdeskApproval tool with an array of command strings. For example:`,
     exampleArgs: [
       ["agent_name", "technical"],
       ["commands", '["kubectl get pods -n duploservices-ai"]'],

@@ -4,6 +4,7 @@ import {
   DuploContext,
   DuploContextPayload,
   DuploPortal,
+  getDuploResponseListStr,
 } from "../../duplocloud/ai.model";
 import duploService from "../../duplocloud/duplo-service";
 import {
@@ -51,64 +52,90 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
   const authToken = duploPortals.find((dp) => dp.portal === portal)?.token;
   const agentName = getStringArg(args, "agent_name");
   const message = getStringArg(args, "message");
+  const respList: DuploAgentResponse[] = [];
+  const { success: lastSuccess, error: lastError } =
+    await processHelpDeskResponse(
+      {
+        context: duploContext as DuploContext,
+        authToken: authToken as string,
+        userText: message as string,
+        sessionId: sessionId as string,
+      },
+      message,
+      extras,
+      respList,
+    );
 
-  return await processHelpDeskResponse(
+  console.log("[sendHelpdeskMessageImpl] respList: ", respList);
+
+  const responseStr = getDuploResponseListStr(respList);
+
+  console.log("[sendHelpdeskMessageImpl] Response String: ", responseStr);
+  console.log("[sendHelpdeskMessageImpl] Last Error: ", lastError);
+
+  if (!lastSuccess && !responseStr.length) {
+    return [
+      {
+        name: "Helpdesk Error",
+        description: "Failed to send message to DuploCloud helpdesk",
+        content: `Error sending message to DuploCloud helpdesk: ${lastError}`,
+        data: respList,
+      },
+    ];
+  }
+
+  return [
     {
-      context: duploContext as DuploContext,
-      authToken: authToken as string,
-      userText: message as string,
-      sessionId: sessionId as string,
+      name: "Helpdesk Response",
+      description: `Message sent to ${agentName} via DuploCloud helpdesk`,
+      content:
+        `✅ Request successfully processed by ${agentName}\n\nMessage: "${message}"\n\nResponse: 
+      ${responseStr}.
+      Analyze the response to take appropriate action and provide short summary of the response.
+      Please avoid repeating the same response.` +
+        (!lastSuccess && lastError
+          ? `\n\n But Error occurred in processing last helpdesk response: ${lastError}`
+          : ""),
+      data: respList,
     },
-    agentName,
-    message,
-    extras,
-  );
+  ];
 };
 
 const MAX_RECURSION_DEPTH = 10;
 
 async function processHelpDeskResponse(
   payload: DuploContextPayload,
-  agentName: string,
   message: string,
   extras: any,
+  respList: DuploAgentResponse[],
   lastResp?: DuploAgentResponse,
   recursionDepth: number = 0,
-) {
+): Promise<{ success: boolean; error?: string }> {
   let actions = {};
-  let llmResp: any = {
-    name: "Helpdesk Response",
-    description: `Message sent to ${agentName} via DuploCloud helpdesk`,
-    content: "",
-  };
-
   const hasLastResp =
     lastResp !== undefined &&
     lastResp !== null &&
     (lastResp?.hasOwnProperty("content") || lastResp?.hasOwnProperty("data"));
 
   console.log(
-    `[processHelpDeskResponse] Recursion depth: ${recursionDepth}, Has commands: ${!!lastResp?.data?.cmds?.length}`,
+    `[sendHelpdeskMessageImpl processHelpDeskResponse] Recursion depth: ${recursionDepth}, Has commands: ${!!lastResp?.data?.cmds?.length}`,
   );
 
   if (hasLastResp) {
-    llmResp = {
-      ...llmResp,
-      content: `✅ Request successfully processed by ${agentName}\n\nMessage: "${message}"\n\nResponse: ${JSON.stringify(lastResp, null, 2)}`,
-    };
+    respList.push(lastResp);
 
     if (
       !lastResp?.data?.cmds?.length ||
       recursionDepth >= MAX_RECURSION_DEPTH
     ) {
       sendAgentResponse(extras, lastResp);
-      return [llmResp];
+      return { success: true };
     }
 
     const { success: cmdApproved, cmdList: approvedCmds } =
       await requestApproveCommands(extras, lastResp);
 
-    if (!cmdApproved || !approvedCmds?.length) return [llmResp];
+    if (!cmdApproved || !approvedCmds?.length) return { success: false };
 
     actions = { cmdList: approvedCmds };
   }
@@ -119,15 +146,7 @@ async function processHelpDeskResponse(
       actions,
     );
 
-    if (!success) {
-      llmResp = {
-        ...llmResp,
-        content:
-          `Error sending message to helpdesk: ${body as string}` +
-          (hasLastResp ? "\n\n Last Response" + llmResp.content : ""),
-      };
-      return [llmResp];
-    }
+    if (!success) return { success: false, error: body as string };
 
     const agentResp: DuploAgentResponse = body as DuploAgentResponse;
 
@@ -136,31 +155,18 @@ async function processHelpDeskResponse(
         ...payload,
         userText: "",
       },
-      agentName,
       message,
       extras,
+      respList,
       agentResp,
       recursionDepth + 1,
     );
   } catch (error) {
     console.error("processHelpDeskResponse error", error);
 
-    if (!hasLastResp) {
-      llmResp = {
-        ...llmResp,
-        content:
-          `Error sending message to helpdesk: ${error instanceof Error ? error.message : error + ""}` +
-          (hasLastResp ? "\n\n Last Response" + llmResp.content : ""),
-      };
-      return [llmResp];
-    }
-
-    return [
-      {
-        name: "Helpdesk Error",
-        description: "Failed to send message",
-        content: `Error sending message to helpdesk: ${error instanceof Error ? error.message : error + ""}`,
-      },
-    ];
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : error + "",
+    };
   }
 }

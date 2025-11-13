@@ -1,3 +1,4 @@
+import { encode } from "@toon-format/toon";
 import { v4 as uuidv4 } from "uuid";
 
 export interface DuploContextPayload {
@@ -269,4 +270,27 @@ export class ToolResponse {
       execute: this.selectionType === "Approved",
     };
   }
+}
+
+export function getDuploResponseListStr(
+  respList: DuploAgentResponse[],
+): string {
+  if (!Array.isArray(respList) || !respList?.length) return "";
+
+  const parsedList: DuploAgentResponse[] = respList.map((resp: any) => ({
+    content: resp.content,
+    data: resp.data,
+    role: resp.role,
+    id: resp.id,
+    timeStamp: resp.timeStamp,
+    thread_id: resp.thread_id,
+  }));
+
+  return encode(parsedList);
+}
+
+export enum DuploToolState {
+  PENDING = "pending",
+  SUCCESS = "success",
+  FAILED = "failed",
 }

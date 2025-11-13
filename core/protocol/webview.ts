@@ -4,6 +4,7 @@ import { ControlPlaneSessionInfo } from "../control-plane/AuthTypes.js";
 import {
   DuploAgentResponse,
   DuploContext,
+  DuploToolState,
   TerminalCommand,
 } from "../duplocloud/ai.model.js";
 import type {
@@ -56,5 +57,15 @@ export type ToWebviewFromIdeOrCoreProtocol = {
   "tools-duplo/approveActions": [
     { agentResponse: DuploAgentResponse; toolCallId: string },
     { success: boolean; cmdList?: TerminalCommand[] },
+  ];
+  "tools-duplo/displayToolState": [
+    {
+      status: {
+        text: string;
+        state: DuploToolState;
+      };
+      toolCallId: string;
+    },
+    void,
   ];
 };
