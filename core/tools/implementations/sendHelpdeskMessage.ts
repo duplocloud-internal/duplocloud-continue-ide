@@ -19,6 +19,7 @@ import {
   requestDuploContext,
   sendAgentResponse,
   sendDuploToolState,
+  updateToolStateItems,
 } from "../duploGuiEvent";
 import { getStringArg } from "../parseArgs";
 
@@ -124,10 +125,6 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
         (!lastSuccess && lastError
           ? `\n\n But Error occurred in processing last helpdesk response: ${lastError}`
           : ""),
-      data: {
-        messageList,
-        context: duploContext,
-      },
     },
   ];
 };
@@ -156,6 +153,8 @@ async function processHelpDeskResponse(
 
   if (hasLastResp) {
     messageList.push(lastResp);
+
+    updateToolStateItems(extras, { messageList });
 
     const hasCommands = !!lastResp?.data?.cmds?.length;
     const hasTools = !!lastResp?.data?.tool_calls?.length;
@@ -225,6 +224,9 @@ async function processHelpDeskResponse(
     }
 
     messageList.push(userMsg);
+
+    updateToolStateItems(extras, { messageList });
+
     return await processHelpDeskResponse(
       {
         ...payload,

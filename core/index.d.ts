@@ -499,6 +499,7 @@ interface ToolCallState {
   processedArgs?: Record<string, any>; // Added in preprocesing step
   output?: ContextItem[];
   tool?: Tool;
+  stateItems?: any;
 }
 
 interface Reasoning {

@@ -39,6 +39,10 @@ class DuploService {
           },
         },
       );
+
+      if (res.status === 401) {
+        return { success: false, body: `Invalid token for ${portalURL}` };
+      }
       const text = await res.text();
       try {
         const json: TenantsWithAgents[] = JSON.parse(text);

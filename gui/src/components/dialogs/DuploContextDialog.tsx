@@ -81,58 +81,65 @@ export const DuploContextDialog: React.FC<{
       );
 
       const portalTenantsMap: Record<string, TenantsWithAgents[]> = {};
+      const portalErrors: Record<string, string> = {};
       setIsLoading(true);
-      for (const d of list) {
-        if (!d?.portal) continue;
-        try {
-          const configPortals = await ideMessenger.request(
-            "duplo/getPortalTenants",
-            {
-              portal: d.portal,
-              token: d.token,
-            },
-          );
-          console.log(
-            "[CloudSettings] tenants fetch configPortals:",
-            configPortals,
-          );
 
-          if (configPortals.status !== "success") {
-            setTenantsErrorByPortal((prev) => ({
-              ...prev,
-              [d.portal]: configPortals.error,
-            }));
+      // Create array of promises for parallel execution
+      const fetchPromises = list
+        .filter((d) => d?.portal) // Skip portals without portal value
+        .map(async (d) => {
+          try {
+            const configPortals = await ideMessenger.request(
+              "duplo/getPortalTenants",
+              {
+                portal: d.portal,
+                token: d.token,
+              },
+            );
+            console.log(
+              "[CloudSettings] tenants fetch configPortals:",
+              configPortals,
+            );
+
+            if (configPortals.status !== "success") {
+              portalErrors[d.portal] = configPortals.error;
+              portalTenantsMap[d.portal] = [];
+              return;
+            }
+
+            const { success, body } = configPortals.content;
+
+            if (!success) {
+              portalErrors[d.portal] = body;
+              portalTenantsMap[d.portal] = [];
+              return;
+            }
+
+            const tenants = Array.isArray(body)
+              ? body.filter((t) => t.agentInstances?.length)
+              : [];
+
+            console.log("[CloudSettings] tenants fetch tenants:", tenants);
+            portalTenantsMap[d.portal] = tenants;
+          } catch (e) {
+            console.warn(
+              "[CloudSettings] GET via core proxy failed",
+              d.portal,
+              e,
+            );
+
+            portalErrors[d.portal] = (e as Error)?.message || String(e);
+            // Ensure tenants list for this portal is empty when failing
             portalTenantsMap[d.portal] = [];
-            continue;
           }
+        });
 
-          const { success, body } = configPortals.content;
+      // Wait for all portal fetches to complete in parallel
+      await Promise.all(fetchPromises);
 
-          if (!success) {
-            setTenantsErrorByPortal((prev) => ({
-              ...prev,
-              [d.portal]: body,
-            }));
-            portalTenantsMap[d.portal] = [];
-            continue;
-          }
-
-          const tenants = Array.isArray(body)
-            ? body.filter((t) => t.agentInstances?.length)
-            : [];
-
-          console.log("[CloudSettings] tenants fetch tenants:", tenants);
-          portalTenantsMap[d.portal] = tenants;
-        } catch (e) {
-          console.warn("[CloudSettings] GET via core proxy failed", portal, e);
-
-          setTenantsErrorByPortal((prev) => ({
-            ...prev,
-            [d.portal]: (e as Error)?.message || String(e),
-          }));
-          // Ensure tenants list for this portal is empty when failing
-          portalTenantsMap[d.portal] = [];
-        }
+      // Update error state once with all errors
+      if (Object.keys(portalErrors).length > 0) {
+        setTenantsErrorByPortal((prev) => ({ ...prev, ...portalErrors }));
       }
 
       console.log(

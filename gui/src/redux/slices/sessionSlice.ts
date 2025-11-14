@@ -952,6 +952,21 @@ export const sessionSlice = createSlice({
         toolCallState.status = "calling";
       }
     },
+    updateToolStateItems: (
+      state,
+      action: PayloadAction<{
+        toolCallId: string;
+        stateItems: any;
+      }>,
+    ) => {
+      const toolCallState = findToolCallById(
+        state.history,
+        action.payload.toolCallId,
+      );
+      if (toolCallState) {
+        toolCallState.stateItems = action.payload.stateItems;
+      }
+    },
     setMode: (state, action: PayloadAction<MessageModes>) => {
       state.mode = action.payload;
     },
@@ -1075,6 +1090,7 @@ export const {
   setToolGenerated,
   updateToolCallOutput,
   setProcessedToolCallArgs,
+  updateToolStateItems,
   setMode,
   setIsSessionMetadataLoading,
   setAllSessionMetadata,

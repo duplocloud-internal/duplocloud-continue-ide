@@ -89,8 +89,7 @@ export function DuploToolEvent({
       window.addEventListener("message", handleMessage);
       return () => window.removeEventListener("message", handleMessage);
     } else {
-      const data = toolCallState?.output?.[0]?.data;
-      const messageList = data?.messageList;
+      const messageList = toolCallState?.stateItems?.messageList;
 
       if (Array.isArray(messageList)) {
         const stateList = processMessageHistory(messageList)

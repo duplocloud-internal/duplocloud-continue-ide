@@ -73,4 +73,11 @@ export type ToWebviewFromIdeOrCoreProtocol = {
     },
     void,
   ];
+  "tools-duplo/updateStateItems": [
+    {
+      stateItems: any;
+      toolCallId: string;
+    },
+    void,
+  ];
 };

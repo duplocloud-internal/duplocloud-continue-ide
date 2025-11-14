@@ -116,4 +116,5 @@ export const CORE_TO_WEBVIEW_PASS_THROUGH: (keyof ToWebviewFromCoreProtocol)[] =
     "tools-duplo/setDuploContext",
     "tools-duplo/approveActions",
     "tools-duplo/displayToolState",
+    "tools-duplo/updateStateItems",
   ];

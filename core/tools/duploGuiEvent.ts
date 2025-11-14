@@ -90,3 +90,18 @@ export function sendDuploToolState(
     toolCallId: extras.toolCallId,
   });
 }
+
+export function updateToolStateItems(
+  extras: ToolExtras,
+  stateItems: any,
+): void {
+  // Check if messenger is available
+  if (!extras.messenger) {
+    return;
+  }
+
+  extras.messenger.request("tools-duplo/updateStateItems", {
+    stateItems,
+    toolCallId: extras.toolCallId,
+  });
+}
