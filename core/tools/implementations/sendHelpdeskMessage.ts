@@ -180,7 +180,7 @@ async function processHelpDeskResponse(
       toolList: approvedTools,
     } = await requestApproveCommands(extras, lastResp);
 
-    if (!actApproved || !approvedCmds?.length || !approvedTools?.length) {
+    if (!actApproved || (!approvedCmds?.length && !approvedTools?.length)) {
       sendDuploToolState(extras, {
         text: "Commands/Tools not approved",
         state: DuploToolState.FAILED,
@@ -188,7 +188,7 @@ async function processHelpDeskResponse(
       return { success: false };
     }
 
-    actions = { cmdList: approvedCmds };
+    actions = { cmdList: approvedCmds, toolCalls: approvedTools };
   }
 
   sendDuploToolState(extras, {
