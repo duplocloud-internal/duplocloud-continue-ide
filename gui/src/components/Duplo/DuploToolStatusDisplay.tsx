@@ -1,7 +1,7 @@
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import { DuploToolState } from "core/duplocloud/ai.model";
-import { vscForeground } from "../../../../components";
-import DuploCloudIcon from "../../../../components/svg/DuploCloudIcon";
+import { vscForeground } from "..";
+import DuploCloudIcon from "../svg/DuploCloudIcon";
 
 interface DuploToolStatusDisplayProps {
   status: {

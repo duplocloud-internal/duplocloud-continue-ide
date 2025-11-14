@@ -1,9 +1,15 @@
-import { DuploAgentResponse, TerminalCommand } from "core/duplocloud/ai.model";
-import { useContext, useEffect, useState } from "react";
+import {
+  CommandSelectionType,
+  DuploAgentResponse,
+  DuploToolResponse,
+  TerminalCommand,
+} from "core/duplocloud/ai.model";
+import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Button } from "../../../../components";
-import { IdeMessengerContext } from "../../../../context/IdeMessenger";
+import { Button } from "..";
+import { IdeMessengerContext } from "../../context/IdeMessenger";
 import { CommandBlock } from "./CommandBlock";
+import { ToolBlock } from "./ToolBlock";
 
 interface DuploResponseDisplayProps {
   agentResponse: DuploAgentResponse;
@@ -18,6 +24,7 @@ export function DuploResponseDisplay({
 }: DuploResponseDisplayProps) {
   const ideMessenger = useContext(IdeMessengerContext);
   const [cmdList, setCmdList] = useState<TerminalCommand[]>([]);
+  const [toolList, setToolList] = useState<DuploToolResponse[]>([]);
   const [isSubmited, setIsSubmited] = useState(false);
 
   useEffect(() => {
@@ -27,33 +34,59 @@ export function DuploResponseDisplay({
         isActive
           ? {
               ...cmd,
-              selectionType: "Approved",
+              selectionType: CommandSelectionType.APPROVED,
             }
           : cmd,
       ) || [],
     );
+
+    setToolList(
+      agentResponse.data?.tool_calls?.map((tool) => {
+        const newTool = isActive
+          ? {
+              ...tool,
+              selectionType: CommandSelectionType.APPROVED,
+            }
+          : tool;
+        return newTool as DuploToolResponse;
+      }) || [],
+    );
   }, [agentResponse, eventId]);
 
-  const handleSelectionChange = (
-    index: number,
-    newState: "Approved" | "Rejected" | "Ignored",
-  ) => {
-    const updated = [...(cmdList || [])];
-    updated[index].selectionType = newState;
-    setCmdList(updated);
-  };
+  const handleCmdChange = useCallback(
+    (index: number, newState: CommandSelectionType) => {
+      const updated = [...(cmdList || [])];
+      updated[index].selectionType = newState;
+      setCmdList(updated);
+    },
+    [setCmdList, cmdList],
+  );
+
+  const handleToolChange = useCallback(
+    (index: number, newState: CommandSelectionType) => {
+      const updated = [...(toolList || [])];
+      updated[index].selectionType = newState;
+      setToolList(updated);
+    },
+    [setToolList, toolList],
+  );
 
   const handleSubmit = () => {
     const runCmds = cmdList
-      ?.filter((cmd) => cmd.selectionType !== "Ignored")
+      ?.filter((cmd) => cmd.selectionType !== CommandSelectionType.IGNORED)
       .map((cmd) => ({
         command: cmd.command,
-        execute: cmd.selectionType === "Approved",
+        execute: cmd.selectionType === CommandSelectionType.APPROVED,
+        uid: cmd.uid,
       }));
+
+    const runTools = toolList?.filter(
+      (tool) => tool.selectionType !== CommandSelectionType.IGNORED,
+    );
 
     ideMessenger.respond(
       "tools-duplo/approveActions",
-      { success: true, cmdList: runCmds },
+      { success: true, cmdList: runCmds, toolList: runTools },
       eventId,
     );
     setIsSubmited(true);
@@ -86,6 +119,23 @@ export function DuploResponseDisplay({
         </div>
       ) : null}
 
+      {toolList?.length ? (
+        <div className="mt-2 flex flex-col">
+          <div className="mb-2 text-sm font-semibold">
+            I can run the following tools for you:
+          </div>
+          {toolList?.map((tool, index) => (
+            <ToolBlock
+              key={tool.id || index}
+              tool={tool as DuploToolResponse}
+              index={index}
+              isDisabled={isDisabled}
+              onSelectionChange={handleToolChange.bind(null, index)}
+            />
+          ))}
+        </div>
+      ) : null}
+
       {/* Commands Section */}
       {cmdList?.length ? (
         <div className="mt-2 flex flex-col">
@@ -99,7 +149,7 @@ export function DuploResponseDisplay({
               cmd={cmd}
               index={index}
               isDisabled={isDisabled}
-              onSelectionChange={handleSelectionChange}
+              onSelectionChange={handleCmdChange.bind(null, index)}
             />
           ))}
         </div>

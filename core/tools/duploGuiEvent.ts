@@ -2,6 +2,7 @@ import { ToolExtras } from "..";
 import {
   DuploAgentResponse,
   DuploContext,
+  DuploToolResponse,
   DuploToolState,
   TerminalCommand,
 } from "../duplocloud/ai.model";
@@ -31,7 +32,11 @@ export async function requestDuploContext(
 export async function requestApproveCommands(
   extras: ToolExtras,
   agentResponse: DuploAgentResponse,
-): Promise<{ success: boolean; cmdList?: TerminalCommand[] }> {
+): Promise<{
+  success: boolean;
+  cmdList?: TerminalCommand[];
+  toolList?: DuploToolResponse[];
+}> {
   // Check if messenger is available
   if (!extras.messenger) {
     return {

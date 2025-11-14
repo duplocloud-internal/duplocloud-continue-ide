@@ -6,13 +6,13 @@ import {
 } from "core/duplocloud/ai.model";
 import { processMessageHistory } from "core/duplocloud/ai.utils";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { openContextItem } from "../../../../components/mainInput/belowMainInput/ContextItemsPeek";
-import { IdeMessengerContext } from "../../../../context/IdeMessenger";
-import { ToolCallStatusMessage } from "../ToolCallStatusMessage";
-import { ToolTruncateHistoryIcon } from "../ToolTruncateHistoryIcon";
-import { toolCallStateToContextItems } from "../utils";
-import { DuploResponseDisplay } from "./DuploResponseDisplay";
+import { IdeMessengerContext } from "../../context/IdeMessenger";
+import { ToolCallStatusMessage } from "../../pages/gui/ToolCallDiv/ToolCallStatusMessage";
+import { ToolTruncateHistoryIcon } from "../../pages/gui/ToolCallDiv/ToolTruncateHistoryIcon";
+import { toolCallStateToContextItems } from "../../pages/gui/ToolCallDiv/utils";
+import { openContextItem } from "../mainInput/belowMainInput/ContextItemsPeek";
 import { DuploToolStatusDisplay } from "./DuploToolStatusDisplay";
+import { DuploResponseDisplay } from "./ResponseDisplay";
 
 interface DuploToolEventProps {
   tool: any;
@@ -88,9 +88,11 @@ export function DuploToolEvent({
       window.addEventListener("message", handleMessage);
       return () => window.removeEventListener("message", handleMessage);
     } else {
-      const histResp = toolCallState?.output?.[0]?.data;
-      if (Array.isArray(histResp)) {
-        const stateList = processMessageHistory(histResp)
+      const data = toolCallState?.output?.[0]?.data;
+      const messageList = data?.messageList;
+
+      if (Array.isArray(messageList)) {
+        const stateList = processMessageHistory(messageList)
           ?.filter((resp) => resp.role === ChatRole.ASSISTANT)
           .map((resp) => ({
             agentResponse: resp as DuploAgentResponse,

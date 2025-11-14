@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   AgentResponseData,
   ChatRole,
+  CommandSelectionType,
   DuploAgentResponse,
   DuploToolResponse,
   MessageResponse,
@@ -64,8 +65,10 @@ export function generateUserMessagePayload(
           )
           .map((cmd) => ({
             command: cmd.command,
-            execute: cmd.execute || cmd.selectionType === "Approved",
-            uid: cmd.uid,
+            execute:
+              cmd.execute ||
+              cmd.selectionType === CommandSelectionType.APPROVED,
+            uid: cmd?.uid,
           }))
       : undefined;
 
@@ -136,10 +139,10 @@ export function createChatMessage(
             selectionType:
               cmd?.selectionType ||
               (cmd?.execute
-                ? "Approved"
+                ? CommandSelectionType.APPROVED
                 : cmd?.command
-                  ? "Rejected"
-                  : "Ignored"),
+                  ? CommandSelectionType.REJECTED
+                  : CommandSelectionType.IGNORED),
             selectionMessage: cmd?.rejection_reason
               ? cmd?.rejection_reason
               : "",
@@ -251,12 +254,13 @@ export function processMessageHistory(
             const rejected = rejectedCmdsMap.has(command);
             const userExecuted = userExecCmdsMap.has(command);
 
-            let selectionType: "Approved" | "Rejected" | "Ignored" | "Execute" =
-              "Ignored";
+            let selectionType: CommandSelectionType =
+              CommandSelectionType.IGNORED;
 
-            if (execute) selectionType = "Approved";
-            else if (rejected) selectionType = "Rejected";
-            else if (userExecuted) selectionType = "Execute";
+            if (execute) selectionType = CommandSelectionType.APPROVED;
+            else if (rejected) selectionType = CommandSelectionType.REJECTED;
+            else if (userExecuted)
+              selectionType = CommandSelectionType.EXECUTED;
 
             return { ...cmd, execute, selectionType };
           });
@@ -291,11 +295,12 @@ export function processMessageHistory(
           const execute = approvedToolsMap.has(toolId);
           const rejected = rejectedToolsMap.has(toolId);
 
-          let selectionType: "Approved" | "Rejected" | "Ignored" = "Ignored";
+          let selectionType: CommandSelectionType =
+            CommandSelectionType.IGNORED;
 
-          if (execute) selectionType = "Approved";
+          if (execute) selectionType = CommandSelectionType.APPROVED;
           else if (rejected) {
-            selectionType = "Rejected";
+            selectionType = CommandSelectionType.REJECTED;
             const userTool = rejectedToolsMap.get(toolId);
             tool.rejection_reason = userTool?.rejection_reason;
           }
@@ -307,6 +312,4 @@ export function processMessageHistory(
       return createChatMessage(msgCopy, ChatRole.ASSISTANT, msgCopy.id);
     }
   });
-
-  //   return chatMessages;
 }

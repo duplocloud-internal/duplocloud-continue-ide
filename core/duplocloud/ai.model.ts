@@ -201,7 +201,7 @@ export class TerminalCommand {
   execute?: boolean;
   uid?: string;
   rejection_reason?: string;
-  selectionType?: "Approved" | "Rejected" | "Ignored" | "Execute";
+  selectionType?: CommandSelectionType | undefined;
   selectionMessage?: string;
   isTriggered?: boolean;
   sensitive?: boolean;
@@ -254,12 +254,12 @@ export class DuploToolResponse {
   input_description?: ToolInputDescriptionMap;
   intent?: string | null;
   rejection_reason?: string;
-  selectionType?: string | null;
+  selectionType?: CommandSelectionType | undefined;
 
   constructor(properties?: Partial<DuploToolResponse>) {
     Object.assign(this, properties || {});
 
-    if (!this?.selectionType) this.selectionType = null;
+    if (!this?.selectionType) this.selectionType = undefined;
     if (!this?.id) this.id = uuidv4();
   }
 
@@ -279,7 +279,7 @@ export class DuploToolResponse {
       selectionType: undefined,
       selectionMessage: undefined,
       isExpanded: undefined,
-      execute: this.selectionType === "Approved",
+      execute: this.selectionType === CommandSelectionType.APPROVED,
     };
   }
 }
@@ -288,4 +288,11 @@ export enum DuploToolState {
   PENDING = "pending",
   SUCCESS = "success",
   FAILED = "failed",
+}
+
+export enum CommandSelectionType {
+  APPROVED = "Approved",
+  REJECTED = "Rejected",
+  IGNORED = "Ignored",
+  EXECUTED = "Executed",
 }

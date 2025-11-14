@@ -82,7 +82,6 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
         userText: message as string,
         sessionId: sessionId as string,
       },
-      message,
       extras,
       messageList,
     );
@@ -125,7 +124,10 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
         (!lastSuccess && lastError
           ? `\n\n But Error occurred in processing last helpdesk response: ${lastError}`
           : ""),
-      data: messageList,
+      data: {
+        messageList,
+        context: duploContext,
+      },
     },
   ];
 };
@@ -134,7 +136,6 @@ const MAX_RECURSION_DEPTH = 10;
 
 async function processHelpDeskResponse(
   payload: DuploContextPayload,
-  message: string,
   extras: any,
   messageList: MessageResponse[],
   lastResp?: DuploAgentResponse,
@@ -156,25 +157,32 @@ async function processHelpDeskResponse(
   if (hasLastResp) {
     messageList.push(lastResp);
 
-    if (
-      !lastResp?.data?.cmds?.length ||
-      recursionDepth >= MAX_RECURSION_DEPTH
-    ) {
+    const hasCommands = !!lastResp?.data?.cmds?.length;
+    const hasTools = !!lastResp?.data?.tool_calls?.length;
+
+    if ((!hasCommands && !hasTools) || recursionDepth >= MAX_RECURSION_DEPTH) {
       sendAgentResponse(extras, lastResp);
       return { success: true };
     }
 
+    const actionList = [];
+    if (hasCommands) actionList.push("commands");
+    if (hasTools) actionList.push("tools");
+
     sendDuploToolState(extras, {
-      text: "Waiting for command approval",
+      text: `Waiting for ${actionList.join(" / ")} approval`,
       state: DuploToolState.PENDING,
     });
 
-    const { success: cmdApproved, cmdList: approvedCmds } =
-      await requestApproveCommands(extras, lastResp);
+    const {
+      success: actApproved,
+      cmdList: approvedCmds,
+      toolList: approvedTools,
+    } = await requestApproveCommands(extras, lastResp);
 
-    if (!cmdApproved || !approvedCmds?.length) {
+    if (!actApproved || !approvedCmds?.length || !approvedTools?.length) {
       sendDuploToolState(extras, {
-        text: "Commands not approved",
+        text: "Commands/Tools not approved",
         state: DuploToolState.FAILED,
       });
       return { success: false };
@@ -190,7 +198,7 @@ async function processHelpDeskResponse(
 
   try {
     const userMsg = generateUserMessagePayload(
-      message,
+      payload?.userText || "",
       actions?.cmdList,
       actions?.toolCalls,
     );
@@ -222,7 +230,6 @@ async function processHelpDeskResponse(
         ...payload,
         userText: "",
       },
-      message,
       extras,
       messageList,
       agentResp,

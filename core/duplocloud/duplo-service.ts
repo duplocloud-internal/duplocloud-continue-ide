@@ -334,8 +334,6 @@ class DuploService {
     const { portal, tenant } = context;
     const url = `${portal}/v1/aiservicedesk/tickets/${tenant?.tenantId}/${sessionId}/sendmessage`;
 
-    console.log("[duplo-service/sendHelpDeskMessage] msgBody=", payload);
-
     try {
       const response = await fetchwithRequestOptions(url, {
         method: "POST",
@@ -348,7 +346,7 @@ class DuploService {
       const text = await response.text();
       try {
         const json = JSON.parse(text);
-        console.log("[duplo-service/sendHelpDeskMessage] body=", json);
+        console.log("[duplo-service/sendHelpDeskMessage] response json=", json);
         return {
           success: true,
           body: createChatMessage(
@@ -357,7 +355,10 @@ class DuploService {
           ) as DuploAgentResponse,
         };
       } catch {
-        console.error("[duplo-service/sendHelpDeskMessage] body=", text);
+        console.error(
+          "[duplo-service/sendHelpDeskMessage] response text=",
+          text,
+        );
         return { success: false, body: "Invalid response format" };
       }
     } catch (error) {
