@@ -12,6 +12,7 @@ import { ToolTruncateHistoryIcon } from "../../pages/gui/ToolCallDiv/ToolTruncat
 import { toolCallStateToContextItems } from "../../pages/gui/ToolCallDiv/utils";
 import { openContextItem } from "../mainInput/belowMainInput/ContextItemsPeek";
 import { DuploToolStatusDisplay } from "./DuploToolStatusDisplay";
+import { HelpDeskLink } from "./HelpDeskLink";
 import { DuploResponseDisplay } from "./ResponseDisplay";
 
 interface DuploToolEventProps {
@@ -134,11 +135,11 @@ export function DuploToolEvent({
         />
       ))}
 
-      {status && (
-        <div className="mt-0">
-          <DuploToolStatusDisplay status={status} />
-        </div>
-      )}
+      <div className="mt-0 flex items-center justify-between">
+        {status ? <DuploToolStatusDisplay status={status} /> : <div></div>}
+
+        <HelpDeskLink />
+      </div>
     </div>
   );
 }

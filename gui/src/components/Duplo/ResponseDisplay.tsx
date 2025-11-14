@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import { Button } from "..";
 import { IdeMessengerContext } from "../../context/IdeMessenger";
 import { CommandBlock } from "./CommandBlock";
+import { LinkBlock } from "./LinkBlock";
 import { ToolBlock } from "./ToolBlock";
 
 interface DuploResponseDisplayProps {
@@ -101,6 +102,8 @@ export function DuploResponseDisplay({
           <ReactMarkdown>{agentResponse.content}</ReactMarkdown>
         </div>
       )}
+
+      <LinkBlock urlList={agentResponse.data?.url_configs || []} />
 
       {agentResponse.data?.executed_cmds?.length ? (
         <div className="mt-2 flex flex-col">
