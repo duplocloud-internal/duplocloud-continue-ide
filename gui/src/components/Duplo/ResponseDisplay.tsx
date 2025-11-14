@@ -112,7 +112,6 @@ export function DuploResponseDisplay({
               key={cmd.uid || index}
               cmd={cmd}
               isExecuted={true}
-              index={index}
               isDisabled={isDisabled}
             />
           ))}
@@ -128,7 +127,6 @@ export function DuploResponseDisplay({
             <ToolBlock
               key={tool.id || index}
               tool={tool as DuploToolResponse}
-              index={index}
               isDisabled={isDisabled}
               onSelectionChange={handleToolChange.bind(null, index)}
             />
@@ -147,7 +145,6 @@ export function DuploResponseDisplay({
             <CommandBlock
               key={cmd.uid || index}
               cmd={cmd}
-              index={index}
               isDisabled={isDisabled}
               onSelectionChange={handleCmdChange.bind(null, index)}
             />

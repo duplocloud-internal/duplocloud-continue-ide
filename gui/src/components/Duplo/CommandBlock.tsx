@@ -11,7 +11,6 @@ import ActionButtonSection from "./ActionButtonSection";
 
 interface CommandBlockProps {
   cmd: TerminalCommand;
-  index: number;
   isDisabled: boolean;
   isExecuted?: boolean;
   onSelectionChange?: (newState: CommandSelectionType) => void;
