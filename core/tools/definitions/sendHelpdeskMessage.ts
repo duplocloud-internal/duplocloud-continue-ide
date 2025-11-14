@@ -12,8 +12,19 @@ export const sendHelpdeskMessageTool: Tool = {
   group: BUILT_IN_GROUP_NAME,
   function: {
     name: BuiltInToolNames.SendHelpdeskMessage,
-    description:
-      "Use this tool when user asks k8s related questions like 'List my pods' or 'Deploy a helm chart'. Use this tool to send a message to the DuploCloud helpdesk. This allows you to communicate with DuploCloud's AI HelpDesk agents when you need assistance.",
+    description: `Send messages to specialized DuploCloud HelpDesk AI agents for capabilities beyond your built-in tools. You can have multi-turn conversations—send follow-up messages to clarify, drill down, or build on previous responses.
+
+AVAILABLE HELP DESK AGENTS:
+
+1. "k8s"
+  Capabilities: Has kubeconfig credentials and cluster context. Executes kubectl and helm commands against live Kubernetes clusters.
+  
+  When to use: Anytime you need to run kubectl or helm commands that require cluster access. Examples: querying cluster state, deploying resources, checking logs, scaling deployments, managing helm releases.
+  
+  When not to use: Tasks you can complete with built-in tools (read_file, write_file, run_command, web search). Examples: generating manifests, creating Helm chart files locally, analyzing YAML, searching documentation.
+
+RESPONSE STYLE:
+This tool calls outputs i.e. the HelpDesk Agent outputs are displayed directly to the user above your response. Reference them naturally without repeating their content. Keep your response minimal and action-oriented.`,
     parameters: {
       type: "object",
       required: ["agent_name", "message"],
