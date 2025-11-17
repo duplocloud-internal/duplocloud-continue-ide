@@ -48,7 +48,12 @@ class DuploService {
         const json: TenantsWithAgents[] = JSON.parse(text);
         console.log("[duplo-service/getPortalTenants] status=", res.status);
 
-        const tenants = json?.map((agent) => new TenantsWithAgents(agent));
+        const tenants = json
+          ?.map((agent) => new TenantsWithAgents(agent))
+          ?.sort((a, b) =>
+            (a.tenantName || "").localeCompare(b.tenantName || ""),
+          );
+
         this.cacheTenants.set(portalURL, tenants);
         return { success: true, body: tenants };
       } catch {

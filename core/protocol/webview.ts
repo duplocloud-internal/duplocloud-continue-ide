@@ -80,4 +80,8 @@ export type ToWebviewFromIdeOrCoreProtocol = {
     },
     void,
   ];
+  "tools-duplo/showDuploContext": [
+    { duploContext?: DuploContext; toolCallId: string },
+    void,
+  ];
 };

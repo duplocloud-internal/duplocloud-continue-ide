@@ -1,21 +1,24 @@
+import { DuploContext } from "core/duplocloud/ai.model";
 import { useMemo } from "react";
 import { useAppSelector } from "../../redux/hooks";
 
-export const HelpDeskLink = () => {
-  const duploContext = useAppSelector((s) => s.session.duploContext);
-
+export const HelpDeskLink = ({
+  context,
+  children,
+}: {
+  context?: DuploContext;
+  children?: React.ReactNode;
+}) => {
   const sessionId = useAppSelector((store) => store.session.id);
-
   const helpDeskLink: string = useMemo(() => {
-    if (!duploContext?.portal || !duploContext?.tenant?.tenantId || !sessionId)
-      return "";
+    if (!context?.portal || !context?.tenant?.tenantId || !sessionId) return "";
 
-    return `${duploContext.portal}/app/ai/service-desk/${duploContext.tenant.tenantId}/tickets/chat/${sessionId}`;
-  }, [duploContext, sessionId]);
+    return `${context.portal}/app/ai/service-desk/${context.tenant.tenantId}/tickets/chat/${sessionId}`;
+  }, [context, sessionId]);
 
   return helpDeskLink ? (
     <a className="text-sm no-underline" href={helpDeskLink}>
-      Open AI HelpDesk
+      {children || "Open AI HelpDesk"}
     </a>
   ) : null;
 };

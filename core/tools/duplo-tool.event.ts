@@ -105,3 +105,18 @@ export function updateToolStateItems(
     toolCallId: extras.toolCallId,
   });
 }
+
+export function sendDuploContext(
+  extras: ToolExtras,
+  duploContext: DuploContext,
+): void {
+  // Check if messenger is available
+  if (!extras.messenger) {
+    return;
+  }
+
+  extras.messenger.request("tools-duplo/showDuploContext", {
+    duploContext,
+    toolCallId: extras.toolCallId,
+  });
+}

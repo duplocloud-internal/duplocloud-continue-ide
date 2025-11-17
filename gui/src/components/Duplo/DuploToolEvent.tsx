@@ -2,6 +2,7 @@ import { ToolCallState } from "core";
 import {
   ChatRole,
   DuploAgentResponse,
+  DuploContext,
   DuploToolState,
 } from "core/duplocloud/ai.model";
 import { processMessageHistory } from "core/duplocloud/ai.utils";
@@ -10,7 +11,9 @@ import { IdeMessengerContext } from "../../context/IdeMessenger";
 import { ToolCallStatusMessage } from "../../pages/gui/ToolCallDiv/ToolCallStatusMessage";
 import { ToolTruncateHistoryIcon } from "../../pages/gui/ToolCallDiv/ToolTruncateHistoryIcon";
 import { toolCallStateToContextItems } from "../../pages/gui/ToolCallDiv/utils";
+import { useAppSelector } from "../../redux/hooks";
 import { openContextItem } from "../mainInput/belowMainInput/ContextItemsPeek";
+import { DuploContextDisplay } from "./DuploContextDisplay";
 import { DuploToolStatusDisplay } from "./DuploToolStatusDisplay";
 import { HelpDeskLink } from "./HelpDeskLink";
 import { DuploResponseDisplay } from "./ResponseDisplay";
@@ -34,7 +37,17 @@ export function DuploToolEvent({
   historyIndex,
 }: DuploToolEventProps) {
   const ideMessenger = useContext(IdeMessengerContext);
+  const sessionContext = useAppSelector((s) => s.session.duploContext);
+  const [duploContext, setDuploContext] = useState<DuploContext | undefined>(
+    sessionContext,
+  );
+
   const [stateList, setStateList] = useState<DuploToolEventState[]>([]);
+  const [status, setStatus] = useState<{
+    text: string;
+    state: DuploToolState;
+  }>();
+
   const shownContextItems = useMemo(() => {
     const contextItems = toolCallStateToContextItems(toolCallState);
     return contextItems.filter((item) => !item.hidden);
@@ -47,11 +60,6 @@ export function DuploToolEvent({
       openContextItem(shownContextItems[0], ideMessenger);
     }
   }
-
-  const [status, setStatus] = useState<{
-    text: string;
-    state: DuploToolState;
-  }>();
 
   useEffect(() => {
     if (["generating", "generated", "calling"].includes(toolCallState.status)) {
@@ -84,6 +92,12 @@ export function DuploToolEvent({
           };
           setStatus(state);
         }
+
+        if (messageType === "tools-duplo/showDuploContext") {
+          console.log("tools-duplo/showDuploContext ", data);
+          const context = data.duploContext as DuploContext;
+          setDuploContext(context);
+        }
       };
 
       window.addEventListener("message", handleMessage);
@@ -105,6 +119,11 @@ export function DuploToolEvent({
           setStateList(stateList);
         }
       }
+
+      const context = toolCallState?.stateItems?.context as DuploContext;
+      if (context?.portal && context?.tenant?.tenantId) {
+        setDuploContext(context);
+      }
     }
   }, []);
 
@@ -125,6 +144,9 @@ export function DuploToolEvent({
         )}
       </div>
 
+      {/* Display Tool Context */}
+      <DuploContextDisplay context={duploContext} />
+
       {stateList.map(({ agentResponse, eventId, isActive, responseId }) => (
         <DuploResponseDisplay
           key={responseId}
@@ -137,7 +159,7 @@ export function DuploToolEvent({
       <div className="mt-0 flex items-center justify-between">
         {status ? <DuploToolStatusDisplay status={status} /> : <div></div>}
 
-        <HelpDeskLink />
+        <HelpDeskLink context={duploContext} />
       </div>
     </div>
   );

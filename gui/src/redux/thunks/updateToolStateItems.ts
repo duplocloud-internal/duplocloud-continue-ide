@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { updateToolStateItems as updateToolStateItemsAction } from "../slices/sessionSlice";
+import { updateToolStateItemsAction } from "../slices/sessionSlice";
 import { ThunkApiType } from "../store";
 import { saveCurrentSession } from "./session";
 

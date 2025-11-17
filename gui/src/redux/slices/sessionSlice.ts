@@ -952,7 +952,7 @@ export const sessionSlice = createSlice({
         toolCallState.status = "calling";
       }
     },
-    updateToolStateItems: (
+    updateToolStateItemsAction: (
       state,
       action: PayloadAction<{
         toolCallId: string;
@@ -964,7 +964,11 @@ export const sessionSlice = createSlice({
         action.payload.toolCallId,
       );
       if (toolCallState) {
-        toolCallState.stateItems = action.payload.stateItems;
+        // Merge new stateItems with existing ones at top level
+        toolCallState.stateItems = {
+          ...(toolCallState?.stateItems || {}),
+          ...(action.payload?.stateItems || {}),
+        };
       }
     },
     setMode: (state, action: PayloadAction<MessageModes>) => {
@@ -1090,7 +1094,7 @@ export const {
   setToolGenerated,
   updateToolCallOutput,
   setProcessedToolCallArgs,
-  updateToolStateItems,
+  updateToolStateItemsAction,
   setMode,
   setIsSessionMetadataLoading,
   setAllSessionMetadata,

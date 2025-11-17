@@ -18,9 +18,10 @@ import {
   requestApproveCommands,
   requestDuploContext,
   sendAgentResponse,
+  sendDuploContext,
   sendDuploToolState,
   updateToolStateItems,
-} from "../duploGuiEvent";
+} from "../duplo-tool.event";
 import { getStringArg } from "../parseArgs";
 
 export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
@@ -69,9 +70,12 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
     }
   }
 
+  sendDuploContext(extras, duploContext as DuploContext);
+  updateToolStateItems(extras, { context: duploContext });
+
   const { portal } = duploContext || {};
   const authToken = duploPortals.find((dp) => dp.portal === portal)?.token;
-  const agentName = getStringArg(args, "agent_name");
+  const agentName = duploContext?.agent?.friendlyName;
   const message = getStringArg(args, "message");
   const messageList: MessageResponse[] = [];
 
@@ -109,7 +113,7 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
   }
 
   sendDuploToolState(extras, {
-    text: "Helpdesk request processed successfully",
+    text: "Helpdesk request processed",
     state: DuploToolState.SUCCESS,
   });
 
@@ -119,9 +123,7 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
       description: `Message sent to ${agentName} via DuploCloud helpdesk`,
       content:
         `✅ Request successfully processed by ${agentName}\n\nMessage: "${message}"\n\nResponse: 
-      ${responseStr}.
-      Analyze the response to take appropriate action and provide short summary of the response.
-      Please avoid repeating the same response.` +
+      ${responseStr}.` +
         (!lastSuccess && lastError
           ? `\n\n But Error occurred in processing last helpdesk response: ${lastError}`
           : ""),
@@ -191,9 +193,11 @@ async function processHelpDeskResponse(
   }
 
   sendDuploToolState(extras, {
-    text: "Sending request to AI Helpdesk",
+    text: "Sending request to Helpdesk",
     state: DuploToolState.PENDING,
   });
+
+  updateToolStateItems(extras, { messageList });
 
   try {
     const userMsg = generateUserMessagePayload(

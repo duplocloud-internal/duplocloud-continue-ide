@@ -43,7 +43,8 @@ export class TicketAgent {
   constructor(props?: Partial<TicketAgent>) {
     Object.assign(this, props || {});
 
-    if (!this?.friendlyName) this.friendlyName = this.instanceId;
+    if (!this?.friendlyName)
+      this.friendlyName = this.agentName || this.instanceId;
   }
 }
 
@@ -56,9 +57,11 @@ export class TenantsWithAgents {
     Object.assign(this, props || {});
 
     if (props?.agentInstances?.length) {
-      this.agentInstances = props.agentInstances.map(
-        (agent) => new TicketAgent(agent),
-      );
+      this.agentInstances = props.agentInstances
+        .map((agent) => new TicketAgent(agent))
+        .sort((a, b) =>
+          (a.friendlyName || "").localeCompare(b.friendlyName || ""),
+        );
     }
   }
 }
