@@ -1,4 +1,5 @@
 import { ToolImpl } from ".";
+import { ToolExtras } from "../..";
 import {
   DuploAgentResponse,
   DuploContext,
@@ -6,6 +7,8 @@ import {
   DuploPortal,
   DuploToolResponse,
   DuploToolState,
+  HelpDeskFile,
+  HelpDeskMessagePayload,
   MessageResponse,
   TerminalCommand,
 } from "../../duplocloud/ai.model";
@@ -14,10 +17,12 @@ import {
   getDuploResponseListStr,
 } from "../../duplocloud/ai.utils";
 import duploService from "../../duplocloud/duplo-service";
+import { throwIfFileIsSecurityConcern } from "../../indexing/ignore";
+import { resolveInputPath } from "../../util/pathResolver";
 import {
-  requestApproveCommands,
+  renderAgentResponse,
+  requestApproveActions,
   requestDuploContext,
-  sendAgentResponse,
   sendDuploContext,
   sendDuploToolState,
   updateToolStateItems,
@@ -77,17 +82,40 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
   const authToken = duploPortals.find((dp) => dp.portal === portal)?.token;
   const agentName = duploContext?.agent?.friendlyName;
   const message = getStringArg(args, "message");
+  const argFiles = args?.files || [];
+
+  let fileObjects: HelpDeskFile[] | undefined = undefined;
+  if (Array.isArray(argFiles) && argFiles.length) {
+    sendDuploToolState(extras, {
+      text: "Fetching file content",
+      state: DuploToolState.PENDING,
+    });
+
+    fileObjects = await getFilesContent(extras, argFiles);
+
+    sendDuploToolState(extras, {
+      text: "File content fetched successfully",
+      state: DuploToolState.PENDING,
+    });
+  }
+
   const messageList: MessageResponse[] = [];
 
   const { success: lastSuccess, error: lastError } =
     await processHelpDeskResponse(
+      extras,
       {
         context: duploContext as DuploContext,
         authToken: authToken as string,
         userText: message as string,
         sessionId: sessionId as string,
       },
-      extras,
+      {
+        content: message,
+        data: {
+          files: fileObjects,
+        },
+      },
       messageList,
     );
 
@@ -134,8 +162,9 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
 const MAX_RECURSION_DEPTH = 10;
 
 async function processHelpDeskResponse(
-  payload: DuploContextPayload,
   extras: any,
+  duploCtx: DuploContextPayload,
+  hdPayload: HelpDeskMessagePayload,
   messageList: MessageResponse[],
   lastResp?: DuploAgentResponse,
   recursionDepth: number = 0,
@@ -162,7 +191,7 @@ async function processHelpDeskResponse(
     const hasTools = !!lastResp?.data?.tool_calls?.length;
 
     if ((!hasCommands && !hasTools) || recursionDepth >= MAX_RECURSION_DEPTH) {
-      sendAgentResponse(extras, lastResp);
+      renderAgentResponse(extras, lastResp);
       return { success: true };
     }
 
@@ -179,7 +208,7 @@ async function processHelpDeskResponse(
       success: actApproved,
       cmdList: approvedCmds,
       toolList: approvedTools,
-    } = await requestApproveCommands(extras, lastResp);
+    } = await requestApproveActions(extras, lastResp);
 
     if (!actApproved || (!approvedCmds?.length && !approvedTools?.length)) {
       sendDuploToolState(extras, {
@@ -200,14 +229,10 @@ async function processHelpDeskResponse(
   updateToolStateItems(extras, { messageList });
 
   try {
-    const userMsg = generateUserMessagePayload(
-      payload?.userText || "",
-      actions?.cmdList,
-      actions?.toolCalls,
-    );
+    const userPayload = generateUserMessagePayload(hdPayload);
     const { success, body } = await duploService.sendHelpDeskMessage(
-      payload,
-      userMsg,
+      duploCtx,
+      userPayload,
     );
 
     if (!success) {
@@ -227,16 +252,14 @@ async function processHelpDeskResponse(
       });
     }
 
-    messageList.push(userMsg);
+    messageList.push(userPayload);
 
     updateToolStateItems(extras, { messageList });
 
     return await processHelpDeskResponse(
-      {
-        ...payload,
-        userText: "",
-      },
       extras,
+      duploCtx,
+      { content: "" },
       messageList,
       agentResp,
       recursionDepth + 1,
@@ -254,4 +277,46 @@ async function processHelpDeskResponse(
       error: error instanceof Error ? error.message : error + "",
     };
   }
+}
+
+// Function to return file content using file source URI with file path in async manner with paraller execution
+async function getFilesContent(
+  extras: ToolExtras,
+  files: {
+    file_path: string;
+    file_source_uri: string;
+  }[],
+) {
+  const fileList: HelpDeskFile[] = await Promise.all(
+    files.map(async (file) => {
+      const resolvedPath = await resolveInputPath(
+        extras.ide,
+        file.file_source_uri,
+      );
+      if (!resolvedPath) {
+        return new HelpDeskFile();
+      }
+
+      // Security check on the resolved display path
+      try {
+        throwIfFileIsSecurityConcern(resolvedPath.displayPath);
+      } catch (error) {
+        console.error("getFileContent error", error);
+        return new HelpDeskFile();
+      }
+
+      const content = await extras.ide.readFile(resolvedPath.uri);
+
+      return new HelpDeskFile({
+        file_path: file.file_path,
+        file_content: content,
+      });
+    }),
+  );
+
+  const filesWithContent: HelpDeskFile[] = fileList.filter(
+    (f) => f?.file_content?.length,
+  );
+
+  return filesWithContent?.length ? filesWithContent : undefined;
 }

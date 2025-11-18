@@ -1,7 +1,11 @@
 import {
   CommandSelectionType,
+  HelpDeskFile,
   TerminalCommand,
 } from "core/duplocloud/ai.model";
+import { useContext } from "react";
+import { SecondaryButton } from "..";
+import { IdeMessengerContext } from "../../context/IdeMessenger";
 import { getFontSize } from "../../util";
 import {
   StyledTerminalContainer,
@@ -22,6 +26,12 @@ export function CommandBlock({
   onSelectionChange = () => {},
   isExecuted = false,
 }: CommandBlockProps) {
+  const ideMessenger = useContext(IdeMessengerContext);
+
+  const handleFileOpen = (file: HelpDeskFile) => {
+    void ideMessenger.ide.showVirtualFile(file.file_path, file.file_content);
+  };
+
   return (
     <div className="mb-2">
       {/* Terminal Input Box */}
@@ -46,6 +56,20 @@ export function CommandBlock({
                 )}
               </code>
             </pre>
+
+            {/* List of files path in badge format display in same line */}
+            {cmd?.files?.length && (
+              <div className="flex-start mb-1 flex flex-wrap">
+                {cmd?.files?.map((file) => (
+                  <SecondaryButton
+                    onClick={() => handleFileOpen(file)}
+                    key={file.uid}
+                  >
+                    {file.file_path}
+                  </SecondaryButton>
+                ))}
+              </div>
+            )}
           </TerminalContent>
 
           {/* Selection Controls */}

@@ -27,7 +27,7 @@ RESPONSE STYLE:
 This tool calls outputs i.e. the HelpDesk Agent outputs are displayed directly to the user above your response. Reference them naturally without repeating their content. Keep your response minimal and action-oriented.`,
     parameters: {
       type: "object",
-      required: ["agent_name", "message"],
+      required: ["agent_name", "message", "files"],
       properties: {
         agent_name: {
           type: "string",
@@ -38,6 +38,26 @@ This tool calls outputs i.e. the HelpDesk Agent outputs are displayed directly t
           type: "string",
           description:
             "The message you want to send to the DuploCloud's AI HelpDesk agent. Be clear and specific about your request or issue.",
+        },
+        // List of file objects to send to the helpdesk agent with each file object containing file_path to be used by HelpDesk Agent and file_source_path URI within actual file system in open project
+        files: {
+          type: "array",
+          // optional: true,
+          items: {
+            type: "object",
+            properties: {
+              file_path: {
+                type: "string",
+                description:
+                  "The path of the file to be used by DuploCloud AI HelpDesk Agent.",
+              },
+              file_source_uri: {
+                type: "string",
+                description:
+                  "The path of the file to read. Can be a relative path (from workspace root), absolute path, tilde path (~/...), or file:// URI",
+              },
+            },
+          },
         },
       },
     },

@@ -79,7 +79,7 @@ export class CreateAiTicket {
   title: string = "";
   assignee: TicketAgent | null = null;
   process_message?: boolean;
-  historic_messages?: MessagePayload[];
+  historic_messages?: HelpDeskMessagePayload[];
   platform_context?: {
     duplo_base_url?: string;
     duplo_token?: string;
@@ -173,6 +173,7 @@ export class AgentResponseData {
   executed_cmds?: TerminalCommand[];
   tool_calls?: DuploToolResponse[];
   url_configs?: URlBox[];
+  files?: HelpDeskFile[];
 }
 
 export class UserMessage {
@@ -208,6 +209,32 @@ export class TerminalCommand {
   selectionMessage?: string;
   isTriggered?: boolean;
   sensitive?: boolean;
+  files?: HelpDeskFile[];
+}
+
+export class HelpDeskFile {
+  file_content: string = "";
+  file_path: string = "";
+  uid?: string;
+
+  constructor(properties?: Partial<HelpDeskFile>) {
+    Object.assign(this, properties || {});
+
+    if (!this.uid) {
+      this.uid = uuidv4();
+    }
+  }
+
+  static getPayloadFiles(
+    files?: HelpDeskFile[] | undefined,
+  ): HelpDeskFile[] | undefined {
+    if (!Array.isArray(files) || !files?.length) return undefined;
+
+    return files?.map((f) => ({
+      file_path: f.file_path,
+      file_content: f.file_content,
+    }));
+  }
 }
 
 export class URlBox {
@@ -220,8 +247,8 @@ export class URlBox {
   uid?: string;
 }
 
-export class MessagePayload {
-  constructor(properties?: Partial<MessagePayload>) {
+export class HelpDeskMessagePayload {
+  constructor(properties?: Partial<HelpDeskMessagePayload>) {
     Object.assign(this, properties || {});
   }
 
@@ -231,6 +258,7 @@ export class MessagePayload {
     cmds?: TerminalCommand[];
     executed_cmds?: TerminalCommand[];
     tool_calls?: DuploToolResponse[];
+    files?: HelpDeskFile[];
   };
   platform_context?: Record<string, any>;
 

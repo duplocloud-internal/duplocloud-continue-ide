@@ -6,6 +6,8 @@ import {
   CommandSelectionType,
   DuploAgentResponse,
   DuploToolResponse,
+  HelpDeskFile,
+  HelpDeskMessagePayload,
   MessageResponse,
   TerminalCommand,
   URlBox,
@@ -22,18 +24,31 @@ export function getDuploResponseListStr(respList: MessageResponse[]): string {
 
       if (resp.data?.duplo_url) respData.duplo_url = resp.data?.duplo_url;
       if (resp.data?.cmds?.length)
-        respData.cmds = resp.data?.cmds?.map((cmd: TerminalCommand) => ({
-          command: cmd?.command,
-        }));
+        respData.cmds = resp.data?.cmds?.map((cmd: TerminalCommand) => {
+          const cmdData: Partial<TerminalCommand> = {
+            command: cmd?.command,
+          };
+          const cmdFiles = HelpDeskFile.getPayloadFiles(cmd?.files);
+          if (cmdFiles?.length) cmdData.files = cmdFiles;
+          return cmdData;
+        });
+
       if (resp.data?.executed_cmds?.length)
         respData.executed_cmds = resp.data?.executed_cmds?.map(
-          (cmd: TerminalCommand) => ({
-            command: cmd?.command,
-            output: cmd?.output,
-          }),
+          (cmd: TerminalCommand) => {
+            const cmdData: Partial<TerminalCommand> = {
+              command: cmd?.command,
+              output: cmd?.output,
+            };
+            const cmdFiles = HelpDeskFile.getPayloadFiles(cmd?.files);
+            if (cmdFiles?.length) cmdData.files = cmdFiles;
+            return cmdData;
+          },
         );
+
       if (resp.data?.tool_calls?.length)
         respData.tool_calls = resp.data?.tool_calls;
+
       if (resp.data?.url_configs?.length)
         respData.url_configs = resp.data?.url_configs;
 
@@ -50,15 +65,14 @@ export function getDuploResponseListStr(respList: MessageResponse[]): string {
   return encode(parsedList);
 }
 
-export function generateUserMessagePayload(
-  userText: string,
-  cmdList?: TerminalCommand[],
-  toolCalls?: DuploToolResponse[],
-) {
+export function generateUserMessagePayload(payload: HelpDeskMessagePayload) {
+  const { content, data } = payload;
+  const { cmds, tool_calls, files } = data || {};
+
   const typeList = ["approved", "rejected"];
-  const cmds =
-    Array.isArray(cmdList) && cmdList?.length
-      ? cmdList
+  const cmdList =
+    Array.isArray(cmds) && cmds?.length
+      ? cmds
           .filter(
             (cmd) =>
               !typeList.includes(cmd?.selectionType?.toLowerCase() || ""),
@@ -72,18 +86,20 @@ export function generateUserMessagePayload(
           }))
       : undefined;
 
-  const tool_calls =
-    Array.isArray(toolCalls) && toolCalls?.length
-      ? toolCalls?.map((tl) => {
+  const toolList =
+    Array.isArray(tool_calls) && tool_calls?.length
+      ? tool_calls?.map((tl) => {
           const tool = new DuploToolResponse(tl);
           return tool.toPayload();
         })
       : undefined;
 
+  const fileList = HelpDeskFile.getPayloadFiles(files);
+
   const msgBody: UserMessage = {
     content:
-      userText || generateActionUserMessage(cmds || [], tool_calls || []),
-    data: { cmds, tool_calls },
+      content || generateActionUserMessage(cmdList || [], toolList || []),
+    data: { cmds: cmdList, tool_calls: toolList, files: fileList },
     role: ChatRole.USER,
   };
 

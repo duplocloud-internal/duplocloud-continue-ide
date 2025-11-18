@@ -79,6 +79,7 @@ export function DuploResponseDisplay({
         command: cmd.command,
         execute: cmd.selectionType === CommandSelectionType.APPROVED,
         uid: cmd.uid,
+        files: cmd?.files?.length ? cmd.files : undefined,
       }));
 
     const runTools = toolList?.filter(

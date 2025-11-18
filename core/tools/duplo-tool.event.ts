@@ -29,7 +29,7 @@ export async function requestDuploContext(
   }
 }
 
-export async function requestApproveCommands(
+export async function requestApproveActions(
   extras: ToolExtras,
   agentResponse: DuploAgentResponse,
 ): Promise<{
@@ -58,7 +58,7 @@ export async function requestApproveCommands(
   }
 }
 
-export function sendAgentResponse(
+export function renderAgentResponse(
   extras: ToolExtras,
   agentResponse: DuploAgentResponse,
 ): void {
