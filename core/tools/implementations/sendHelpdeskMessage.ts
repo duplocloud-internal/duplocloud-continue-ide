@@ -229,6 +229,18 @@ async function processHelpDeskResponse(
   updateToolStateItems(extras, { messageList });
 
   try {
+    if (!hdPayload.data) hdPayload.data = {};
+
+    if (Array.isArray(actions?.cmdList) && actions?.cmdList?.length)
+      hdPayload.data.cmds = (hdPayload.data.cmds || []).concat(
+        actions?.cmdList,
+      );
+
+    if (Array.isArray(actions?.toolCalls) && actions?.toolCalls?.length)
+      hdPayload.data.tool_calls = (hdPayload.data.tool_calls || []).concat(
+        actions?.toolCalls,
+      );
+
     const userPayload = generateUserMessagePayload(hdPayload);
     console.log(
       "[processHelpDeskResponse] userPayload before API call:",
@@ -263,7 +275,7 @@ async function processHelpDeskResponse(
     return await processHelpDeskResponse(
       extras,
       duploCtx,
-      { content: "" },
+      { content: "", data: {} },
       messageList,
       agentResp,
       recursionDepth + 1,

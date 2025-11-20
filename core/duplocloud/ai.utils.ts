@@ -83,6 +83,7 @@ export function generateUserMessagePayload(payload: HelpDeskMessagePayload) {
               cmd.execute ||
               cmd.selectionType === CommandSelectionType.APPROVED,
             uid: cmd?.uid,
+            files: cmd?.files?.map((fl) => new HelpDeskFile(fl)),
           }))
       : undefined;
 
@@ -163,6 +164,7 @@ export function createChatMessage(
               ? cmd?.rejection_reason
               : "",
             sensitive: cmd?.sensitive,
+            files: cmd?.files?.map((fl) => new HelpDeskFile(fl)),
           }),
       ) ?? [];
 
@@ -176,6 +178,7 @@ export function createChatMessage(
             output: cmd?.output || "",
             execute: cmd?.execute || false,
             uid: cmd?.uid,
+            files: cmd?.files?.map((fl) => new HelpDeskFile(fl)),
           }),
       ) ?? [];
 
