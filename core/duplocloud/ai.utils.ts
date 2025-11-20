@@ -67,7 +67,7 @@ export function getDuploResponseListStr(respList: MessageResponse[]): string {
 
 export function generateUserMessagePayload(payload: HelpDeskMessagePayload) {
   const { content, data } = payload;
-  const { cmds, tool_calls, files } = data || {};
+  const { cmds, tool_calls, user_file_uploads } = data || {};
 
   const typeList = ["approved", "rejected"];
   const cmdList =
@@ -94,12 +94,12 @@ export function generateUserMessagePayload(payload: HelpDeskMessagePayload) {
         })
       : undefined;
 
-  const fileList = HelpDeskFile.getPayloadFiles(files);
+  const fileList = HelpDeskFile.getPayloadFiles(user_file_uploads);
 
   const msgBody: UserMessage = {
     content:
       content || generateActionUserMessage(cmdList || [], toolList || []),
-    data: { cmds: cmdList, tool_calls: toolList, files: fileList },
+    data: { cmds: cmdList, tool_calls: toolList, user_file_uploads: fileList },
     role: ChatRole.USER,
   };
 

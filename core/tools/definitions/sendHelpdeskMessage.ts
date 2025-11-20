@@ -49,12 +49,12 @@ This tool calls outputs i.e. the HelpDesk Agent outputs are displayed directly t
               file_path: {
                 type: "string",
                 description:
-                  "The path of the file to be used by DuploCloud AI HelpDesk Agent.",
+                  "The path of the file where the file content will be written to inside the uploaded directory used by DuploCloud AI HelpDesk Agent. For example if you mention file_path as foo/bar.txt it will be written to ~/uploaded/foo/bar.txt in the helpdesk agent's persistent storage. Do not include ~/uploaded/ in file_path. Just give the relative path with respect to the uploaded directory.",
               },
-              file_source_uri: {
+              file_content_source_path: {
                 type: "string",
                 description:
-                  "The path of the file to read. Can be a relative path (from workspace root), absolute path, tilde path (~/...), or file:// URI",
+                  "The path of the file whose content will be sent to the helpdesk agent and written to the helpdesk agent's persistent storage at the file_path mentioned inside the ~uploaded directory in the helpdesk agent's persistent storage. Can be a relative path (from workspace root), absolute path, tilde path (~/...), or file:// URI.",
               },
             },
           },
@@ -67,6 +67,10 @@ This tool calls outputs i.e. the HelpDesk Agent outputs are displayed directly t
     exampleArgs: [
       ["agent_name", "k8s"],
       ["message", "List my pods"],
+      [
+        "files",
+        '[{ "file_path": "pods.txt", "file_content_source_path": "path_in_project/pods.txt" }]',
+      ],
     ],
   },
   defaultToolPolicy: "allowedWithPermission",

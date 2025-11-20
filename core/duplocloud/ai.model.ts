@@ -174,6 +174,7 @@ export class AgentResponseData {
   tool_calls?: DuploToolResponse[];
   url_configs?: URlBox[];
   files?: HelpDeskFile[];
+  user_file_uploads?: HelpDeskFile[];
 }
 
 export class UserMessage {
@@ -258,7 +259,7 @@ export class HelpDeskMessagePayload {
     cmds?: TerminalCommand[];
     executed_cmds?: TerminalCommand[];
     tool_calls?: DuploToolResponse[];
-    files?: HelpDeskFile[];
+    user_file_uploads?: HelpDeskFile[];
   };
   platform_context?: Record<string, any>;
 

@@ -113,7 +113,7 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
       {
         content: message,
         data: {
-          files: fileObjects,
+          user_file_uploads: fileObjects,
         },
       },
       messageList,
@@ -230,6 +230,10 @@ async function processHelpDeskResponse(
 
   try {
     const userPayload = generateUserMessagePayload(hdPayload);
+    console.log(
+      "[processHelpDeskResponse] userPayload before API call:",
+      JSON.stringify(userPayload, null, 2),
+    );
     const { success, body } = await duploService.sendHelpDeskMessage(
       duploCtx,
       userPayload,
@@ -284,14 +288,14 @@ async function getFilesContent(
   extras: ToolExtras,
   files: {
     file_path: string;
-    file_source_uri: string;
+    file_content_source_path: string;
   }[],
 ) {
   const fileList: HelpDeskFile[] = await Promise.all(
     files.map(async (file) => {
       const resolvedPath = await resolveInputPath(
         extras.ide,
-        file.file_source_uri,
+        file.file_content_source_path,
       );
       if (!resolvedPath) {
         return new HelpDeskFile();
