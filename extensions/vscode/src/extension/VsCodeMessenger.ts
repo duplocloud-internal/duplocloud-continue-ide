@@ -36,7 +36,13 @@ import { getExtensionUri } from "../util/vscode";
 import { VsCodeIde } from "../VsCodeIde";
 import { VsCodeWebviewProtocol } from "../webviewProtocol";
 
+import {
+  DuploPortalCredentials,
+  DuploUserInfo,
+} from "core/duplocloud/ai.model";
+import duploService from "core/duplocloud/duplo-service";
 import { encodeFullSlug } from "../../../../packages/config-yaml/dist";
+import { UriEventHandler } from "../stubs/uriHandler";
 import { VsCodeExtension } from "./VsCodeExtension";
 
 type ToIdeOrWebviewFromCoreProtocol = ToIdeFromCoreProtocol &
@@ -79,6 +85,15 @@ export class VsCodeMessenger {
     this.onCore(messageType, handler);
   }
 
+  // Pending login states for DuploCloud authentication
+  private _pendingDuploLogins = new Map<
+    string,
+    {
+      resolve: (value: { success: boolean; error?: string }) => void;
+      reject: (reason?: any) => void;
+    }
+  >();
+
   constructor(
     private readonly inProcessMessenger: InProcessMessenger<
       ToCoreProtocol,
@@ -92,7 +107,12 @@ export class VsCodeMessenger {
     private readonly editDecorationManager: EditDecorationManager,
     private readonly context: vscode.ExtensionContext,
     private readonly vsCodeExtension: VsCodeExtension,
+    private readonly uriHandler: UriEventHandler,
   ) {
+    // Set up DuploCloud URI callback handler
+    uriHandler.event((uri: vscode.Uri) => {
+      void this.handleDuploAuthCallback(uri);
+    });
     /** WEBVIEW ONLY LISTENERS **/
     this.onWebview("showFile", (msg) => {
       this.ide.openFile(msg.data.filepath);
@@ -832,5 +852,229 @@ export class VsCodeMessenger {
     this.onWebviewOrCore("reportError", async (msg) => {
       await handleLLMError(msg.data);
     });
+
+    /** DUPLO CREDENTIAL MANAGEMENT (SECURE) **/
+    const DUPLO_CREDENTIALS_KEY = "duplo.portal.credentials";
+
+    this.onWebviewOrCore("duplo/savePortalCredentials", async (msg) => {
+      const { portal, authToken, userInfo } = msg.data;
+
+      // Load existing credentials from SecretStorage (secrets stay in extension)
+      const secretValue = await ide.readSecrets([DUPLO_CREDENTIALS_KEY]);
+      const existing = secretValue[DUPLO_CREDENTIALS_KEY]
+        ? JSON.parse(secretValue[DUPLO_CREDENTIALS_KEY])
+        : { portals: {} };
+
+      // Update credentials
+      existing.portals[portal] = {
+        portal,
+        authToken,
+        userInfo,
+        lastLogin: Date.now(),
+      };
+
+      // Save to SecretStorage (secrets never leave extension)
+      await ide.writeSecrets({
+        [DUPLO_CREDENTIALS_KEY]: JSON.stringify(existing),
+      });
+    });
+
+    this.onWebviewOrCore("duplo/getPortalAuthStatus", async (msg) => {
+      const { portals } = msg.data;
+
+      // Read secrets (stays in extension)
+      const secretValue = await ide.readSecrets([DUPLO_CREDENTIALS_KEY]);
+      const credentials = secretValue[DUPLO_CREDENTIALS_KEY]
+        ? JSON.parse(secretValue[DUPLO_CREDENTIALS_KEY])
+        : { portals: {} };
+
+      // Return ONLY authentication status, NOT the tokens
+      return portals.map(
+        (portal: string) =>
+          new DuploPortalCredentials({
+            portal,
+            isAuthenticated: !!credentials.portals[portal]?.authToken,
+            authToken: credentials.portals[portal]?.authToken,
+            userInfo: credentials.portals[portal]?.userInfo,
+            lastLogin: credentials.portals[portal]?.lastLogin,
+          }),
+      );
+    });
+
+    this.onWebviewOrCore("duplo/getAllPortalAuthStatus", async (msg) => {
+      // Read secrets (stays in extension)
+      const secretValue = await ide.readSecrets([DUPLO_CREDENTIALS_KEY]);
+      const credentials = secretValue[DUPLO_CREDENTIALS_KEY]
+        ? JSON.parse(secretValue[DUPLO_CREDENTIALS_KEY])
+        : { portals: {} };
+
+      const portalMap: Record<string, DuploPortalCredentials> = {};
+      for (const portal of Object.keys(credentials.portals)) {
+        portalMap[portal] = new DuploPortalCredentials({
+          portal,
+          authToken: credentials.portals[portal]?.authToken,
+          userInfo: credentials.portals[portal]?.userInfo,
+          lastLogin: credentials.portals[portal]?.lastLogin,
+        });
+      }
+      return portalMap;
+    });
+
+    this.onWebviewOrCore("duplo/getPortalToken", async (msg) => {
+      const { portal } = msg.data;
+
+      const secretValue = await ide.readSecrets([DUPLO_CREDENTIALS_KEY]);
+      const credentials = secretValue[DUPLO_CREDENTIALS_KEY]
+        ? JSON.parse(secretValue[DUPLO_CREDENTIALS_KEY])
+        : { portals: {} };
+
+      // Return token ONLY when needed for API calls
+      return credentials.portals[portal]?.authToken || null;
+    });
+
+    this.onWebviewOrCore("duplo/deletePortalCredentials", async (msg) => {
+      const { portal } = msg.data;
+
+      const secretValue = await ide.readSecrets([DUPLO_CREDENTIALS_KEY]);
+      const credentials = secretValue[DUPLO_CREDENTIALS_KEY]
+        ? JSON.parse(secretValue[DUPLO_CREDENTIALS_KEY])
+        : { portals: {} };
+
+      delete credentials.portals[portal];
+
+      await ide.writeSecrets({
+        [DUPLO_CREDENTIALS_KEY]: JSON.stringify(credentials),
+      });
+    });
+
+    this.onWebviewOrCore("duplo/initiatePortalLogin", async (msg) => {
+      const { portal } = msg.data;
+
+      try {
+        // Construct redirect URI (VS Code will handle this callback)
+        const redirectUri = `${vscode.env.uriScheme}://DuploCloud.continue/duplocloud-auth-callback`;
+
+        // Construct login URL with redirect_uri and vscode-user flag
+        const loginUrl = new URL(`${portal}/app`);
+        loginUrl.searchParams.append("vscode-user", "true");
+        loginUrl.searchParams.append("redirect_uri", redirectUri);
+
+        console.log("[DuploCloud] Opening login URL:", loginUrl.toString());
+
+        // Open browser for user to login
+        await vscode.env.openExternal(vscode.Uri.parse(loginUrl.toString()));
+
+        // Create a promise that will be resolved by the URI callback
+        return new Promise<{ success: boolean; error?: string }>(
+          (resolve, reject) => {
+            // Store resolver with portal as key
+            this._pendingDuploLogins.set(portal, { resolve, reject });
+
+            // Set timeout (5 minutes)
+            setTimeout(
+              () => {
+                if (this._pendingDuploLogins.has(portal)) {
+                  this._pendingDuploLogins.delete(portal);
+                  resolve({ success: false, error: "Login timeout" });
+                }
+              },
+              5 * 60 * 1000,
+            );
+          },
+        );
+      } catch (error: any) {
+        console.error("[DuploCloud] Login initiation error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  /**
+   * Handle DuploCloud authentication callback from browser
+   * Expected format: vscode://duplocloud-continue/duplocloud-auth-callback?token=xxx&portal=yyy
+   */
+  private async handleDuploAuthCallback(uri: vscode.Uri): Promise<void> {
+    // Check if this is a DuploCloud auth callback
+    if (uri.path !== "/duplocloud-auth-callback") {
+      return;
+    }
+
+    const query = new URLSearchParams(uri.query);
+    const token = query.get("token");
+    const portalFromQuery = query.get("portal");
+
+    if (!token) {
+      console.error("[DuploCloud] No token in callback");
+      // Reject all pending logins
+      for (const [portal, { resolve }] of this._pendingDuploLogins) {
+        resolve({ success: false, error: "No token received" });
+      }
+      this._pendingDuploLogins.clear();
+      return;
+    }
+
+    // Find matching portal or use the one from query
+    const pendingPortals = Array.from(this._pendingDuploLogins.keys());
+    const targetPortal = portalFromQuery || pendingPortals[0];
+
+    if (!targetPortal) {
+      console.error("[DuploCloud] No pending login found");
+      return;
+    }
+
+    const pendingLogin = this._pendingDuploLogins.get(targetPortal);
+    if (!pendingLogin) {
+      console.error("[DuploCloud] No resolver for portal:", targetPortal);
+      return;
+    }
+
+    try {
+      // Validate token by getting user info
+      console.log("[DuploCloud] Validating token for portal:", targetPortal);
+      const result = await duploService.getUserRoleByPortal(
+        targetPortal,
+        token,
+      );
+
+      if (!result.success) {
+        console.error("[DuploCloud] Token validation failed:", result.body);
+        pendingLogin.resolve({
+          success: false,
+          error: "Invalid token",
+        });
+        this._pendingDuploLogins.delete(targetPortal);
+        return;
+      }
+
+      const userInfo = result.body as DuploUserInfo;
+
+      // Save credentials to SecretStorage
+      console.log("[DuploCloud] Saving credentials for portal:", targetPortal);
+      await this.ide.writeSecrets({
+        ["duplo.portal.credentials"]: JSON.stringify({
+          portals: {
+            [targetPortal]: {
+              portal: targetPortal,
+              authToken: token,
+              userInfo,
+              lastLogin: Date.now(),
+            },
+          },
+        }),
+      });
+
+      // Resolve the promise
+      pendingLogin.resolve({ success: true });
+      this._pendingDuploLogins.delete(targetPortal);
+
+      // Show success message
+      void vscode.window.showInformationMessage(
+        `Successfully logged into ${DuploPortalCredentials.getDomainFromUrl(targetPortal)}`,
+      );
+    } catch (error: any) {
+      console.error("[DuploCloud] Auth callback error:", error);
+      pendingLogin.resolve({ success: false, error: error.message });
+      this._pendingDuploLogins.delete(targetPortal);
+    }
   }
 }

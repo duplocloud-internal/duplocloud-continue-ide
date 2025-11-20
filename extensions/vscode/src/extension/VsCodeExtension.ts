@@ -285,6 +285,7 @@ export class VsCodeExtension {
       this.editDecorationManager,
       context,
       this,
+      this.uriHandler,
     );
 
     this.core = new Core(inProcessMessenger, this.ide);

@@ -4,7 +4,6 @@ import {
   DuploAgentResponse,
   DuploContext,
   DuploContextPayload,
-  DuploPortal,
   DuploToolResponse,
   DuploToolState,
   HelpDeskFile,
@@ -30,19 +29,6 @@ import {
 import { getStringArg } from "../parseArgs";
 
 export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
-  const duploPortals = extras.config.ui?.duplo as DuploPortal[];
-  // Validate required configuration
-  if (!duploPortals.length) {
-    return [
-      {
-        name: "Configuration Error",
-        description: "Missing DuploCloud configuration",
-        content:
-          "Please add DuploCloud configuration to your local config and set DuploCloud context.",
-      },
-    ];
-  }
-
   let duploContext: DuploContext | undefined = extras.session?.duploContext;
 
   const sessionId = extras.session?.sessionId;
@@ -79,7 +65,26 @@ export const sendHelpdeskMessageImpl: ToolImpl = async (args, extras) => {
   updateToolStateItems(extras, { context: duploContext });
 
   const { portal } = duploContext || {};
-  const authToken = duploPortals.find((dp) => dp.portal === portal)?.token;
+
+  const authToken = await extras.messenger.request("duplo/getPortalToken", {
+    portal,
+  });
+
+  if (!authToken) {
+    sendDuploToolState(extras, {
+      text: "Authentication required",
+      state: DuploToolState.FAILED,
+    });
+
+    return [
+      {
+        name: "Authentication Error",
+        description: "No authentication token found",
+        content: `Please authenticate with portal: ${portal}`,
+      },
+    ];
+  }
+
   const agentName = duploContext?.agent?.friendlyName;
   const message = getStringArg(args, "message");
   const argFiles = args?.files || [];

@@ -7,6 +7,7 @@ import {
   DuploContext,
   DuploContextPayload,
   DuploContextType,
+  DuploUserInfo,
   TenantsWithAgents,
   TicketAgent,
   UserMessage,
@@ -28,6 +29,14 @@ class DuploService {
     const cachedTenants = this.cacheTenants.get(portalURL);
     if (cachedTenants && cachedTenants?.length > 0)
       return { success: true, body: cachedTenants };
+
+    if (!portalURL) {
+      return { success: false, body: "Portal URL is required" };
+    }
+    console.log(
+      "[duplo-service/getPortalTenants] Calling API with URL:",
+      portalURL,
+    );
     try {
       const res = await fetchwithRequestOptions(
         `${portalURL}/v1/aiservicedesk/admin/tenants/agents`,
@@ -43,6 +52,7 @@ class DuploService {
       if (res.status === 401) {
         return { success: false, body: `Invalid token for ${portalURL}` };
       }
+
       const text = await res.text();
       try {
         const json: TenantsWithAgents[] = JSON.parse(text);
@@ -94,6 +104,68 @@ class DuploService {
         (agent: TicketAgent) => agent.instanceId === instanceId,
       ) ?? null
     );
+  }
+
+  async getUserRoleByPortal(portalURL: string, authToken?: string) {
+    // TODO: Implement actual API call to get user role info
+    if (!portalURL) {
+      return { success: false, body: "Portal URL is required" };
+    }
+
+    if (!authToken) {
+      return { success: false, body: "Portal URL is required" };
+    }
+
+    try {
+      console.log(
+        "[duplo-service/getUserRoleByPortal] Calling API with URL:",
+        portalURL,
+      );
+
+      const res = await fetchwithRequestOptions(
+        `${portalURL}/admin/GetUserRoleInfo`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: authToken ? `Bearer ${authToken}` : "",
+          },
+        },
+      );
+
+      if (res.status === 401) {
+        return {
+          success: false,
+          body: `UNAUTHENTICATED: Invalid token for ${portalURL}`,
+        };
+      }
+
+      if (!res.ok) {
+        return {
+          success: false,
+          body: `Failed to get user role: ${res.status}`,
+        };
+      }
+
+      const text = await res.text();
+      try {
+        const json: DuploUserInfo = JSON.parse(text);
+        console.log("[duplo-service/getUserRoleByPortal] status=", res.status);
+
+        const userInfo = new DuploUserInfo(json);
+
+        return { success: true, body: userInfo };
+      } catch {
+        console.log(
+          "[duplo-service/getUserRoleByPortal] parse error - status=",
+          text,
+          "(non-JSON body)",
+        );
+        return { success: false, body: "Invalid response format" };
+      }
+    } catch (error) {
+      console.error("Error getting user role:", error);
+      return { success: false, body: "Failed to get user role" };
+    }
   }
 
   async setTicketContext(payload: DuploContextPayload): Promise<any> {

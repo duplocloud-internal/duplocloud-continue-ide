@@ -1,11 +1,11 @@
 import { useContext } from "react";
-import { Button, SecondaryButton } from "../..";
+import { Button } from "../..";
 import { useAuth } from "../../../context/Auth";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
-import { useCreditStatus } from "../../../hooks/useCredits";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { selectCurrentOrg } from "../../../redux/slices/profilesSlice";
 import { selectFirstHubProfile } from "../../../redux/thunks/selectFirstHubProfile";
+import { PortalAuthStatus } from "../../Duplo/Auth/PortalAuthStatus";
 import DuploCloudLogo from "../../svg/DuploCloudLogo";
 import { useOnboardingCard } from "../hooks/useOnboardingCard";
 
@@ -17,6 +17,7 @@ export function OnboardingCardLanding({
   isDialog?: boolean;
 }) {
   const ideMessenger = useContext(IdeMessengerContext);
+
   const onboardingCard = useOnboardingCard();
   const auth = useAuth();
   const currentOrg = useAppSelector(selectCurrentOrg);
@@ -53,7 +54,7 @@ export function OnboardingCardLanding({
     onboardingCard.close(isDialog);
   }
 
-  const { creditStatus, outOfStarterCredits } = useCreditStatus();
+  // const { creditStatus, outOfStarterCredits } = useCreditStatus();
 
   return (
     <div className="xs:px-0 flex w-full max-w-full flex-col items-center justify-center px-4 text-center">
@@ -61,7 +62,7 @@ export function OnboardingCardLanding({
         <DuploCloudLogo height={75} />
       </div>
 
-      {outOfStarterCredits ? (
+      {/* {outOfStarterCredits ? (
         <>
           <p className="xs:w-3/4 w-full text-sm">
             You've used all your starter credits! Click below to purchase
@@ -93,11 +94,13 @@ export function OnboardingCardLanding({
             Log in to DuploCloud
           </Button>
         </>
-      )}
+      )} */}
 
-      <SecondaryButton onClick={onSelectConfigure} className="w-full">
-        Or, configure your own models
-      </SecondaryButton>
+      <PortalAuthStatus />
+
+      <Button onClick={onSelectConfigure} className="w-full">
+        Configure your models
+      </Button>
     </div>
   );
 }

@@ -47,7 +47,7 @@ export function OnboardingCard({
   if (activeTab) {
     return (
       <ReusableCard
-        showCloseButton={!isDialog && !!config.modelsByRole.chat.length}
+        showCloseButton={!isDialog}
         onClose={close}
         testId="onboarding-card"
       >
@@ -75,10 +75,7 @@ export function OnboardingCard({
   }
 
   return (
-    <ReusableCard
-      showCloseButton={!isDialog && !!config.modelsByRole.chat.length}
-      onClose={close}
-    >
+    <ReusableCard showCloseButton={false} onClose={close}>
       <div className="flex h-full w-full items-center justify-center">
         <OnboardingCardLanding
           onSelectConfigure={() => setActiveTab(OnboardingModes.API_KEY)}

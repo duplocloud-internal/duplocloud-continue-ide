@@ -15,6 +15,7 @@ import type {
   Thread,
 } from "../";
 import { ControlPlaneSessionInfo } from "../control-plane/AuthTypes";
+import { DuploPortalCredentials, DuploUserInfo } from "../duplocloud/ai.model";
 
 export interface GetGhTokenArgs {
   force?: boolean;
@@ -94,6 +95,26 @@ export type ToIdeFromWebviewOrCoreProtocol = {
   logoutOfControlPlane: [undefined, void];
   reportError: [any, void];
   closeSidebar: [undefined, void];
+
+  // DuploCloud credential management (secure - secrets never exposed to GUI)
+  "duplo/savePortalCredentials": [
+    { portal: string; authToken: string; userInfo?: DuploUserInfo },
+    void,
+  ];
+  "duplo/getPortalAuthStatus": [
+    { portals: string[] },
+    Array<DuploPortalCredentials>,
+  ];
+  "duplo/getAllPortalAuthStatus": [
+    void,
+    Record<string, DuploPortalCredentials>,
+  ];
+  "duplo/getPortalToken": [{ portal: string }, string | null];
+  "duplo/deletePortalCredentials": [{ portal: string }, void];
+  "duplo/initiatePortalLogin": [
+    { portal: string },
+    { success: boolean; error?: string; token?: string },
+  ];
 };
 
 export type ToWebviewOrCoreFromIdeProtocol = {

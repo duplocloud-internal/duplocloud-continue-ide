@@ -226,6 +226,8 @@ type SessionState = {
   compactionLoading: Record<number, boolean>; // Track compaction loading by message index
   // Per-session DuploContext
   duploContext?: DuploContext;
+  // Portal authentication statuses (cached for zero-wait access)
+  portalAuthStatuses: Record<string, boolean>;
 };
 
 export const INITIAL_SESSION_STATE: SessionState = {
@@ -246,6 +248,7 @@ export const INITIAL_SESSION_STATE: SessionState = {
   lastSessionId: undefined,
   newestToolbarPreviewForInput: {},
   compactionLoading: {},
+  portalAuthStatuses: {},
 };
 
 export const sessionSlice = createSlice({
@@ -983,6 +986,22 @@ export const sessionSlice = createSlice({
     setDuploContext: (state, action: PayloadAction<DuploContext>) => {
       state.duploContext = action.payload;
     },
+    // Portal Auth Status Management (cached for zero-wait access)
+    setPortalAuthStatuses: (
+      state,
+      action: PayloadAction<Record<string, boolean>>,
+    ) => {
+      state.portalAuthStatuses = action.payload;
+    },
+    updatePortalAuthStatus: (
+      state,
+      action: PayloadAction<{ portal: string; status: boolean }>,
+    ) => {
+      state.portalAuthStatuses[action.payload.portal] = action.payload.status;
+    },
+    removePortalAuthStatus: (state, action: PayloadAction<string>) => {
+      delete state.portalAuthStatuses[action.payload];
+    },
     setNewestToolbarPreviewForInput: (
       state,
       {
@@ -1109,6 +1128,9 @@ export const {
   setContextPercentage,
   setCompactionLoading,
   setDuploContext,
+  setPortalAuthStatuses,
+  updatePortalAuthStatus,
+  removePortalAuthStatus,
 } = sessionSlice.actions;
 
 export const { selectIsGatheringContext } = sessionSlice.selectors;

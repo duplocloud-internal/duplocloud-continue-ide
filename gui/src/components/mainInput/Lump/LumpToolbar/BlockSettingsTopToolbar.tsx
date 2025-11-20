@@ -164,7 +164,7 @@ export function BlockSettingsTopToolbar() {
               <ToolTip
                 content={
                   noDuploContext ? (
-                    "Set Cloud Context"
+                    "Set DuploCloud Context"
                   ) : (
                     <div className="text-left">
                       <div>Current Context:</div>

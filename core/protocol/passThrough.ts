@@ -93,6 +93,7 @@ export const WEBVIEW_TO_CORE_PASS_THROUGH: (keyof ToCoreFromWebviewProtocol)[] =
     // Duplo proxy (avoid webview CORS)
     "duplo/getPortalTenants",
     "duplo/setTicketContext",
+    "duplo/getUserRoleByPortal",
   ];
 
 // Message types to pass through from core to webview

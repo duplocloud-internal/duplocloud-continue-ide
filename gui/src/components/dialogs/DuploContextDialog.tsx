@@ -2,7 +2,6 @@ import {
   DuploContext,
   DuploContextPayload,
   DuploContextType,
-  DuploPortal,
   TenantsWithAgents,
   TicketAgent,
 } from "core/duplocloud/ai.model";
@@ -22,6 +21,7 @@ import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { setDuploContext } from "../../redux/slices/sessionSlice";
 import { setDialogMessage, setShowDialog } from "../../redux/slices/uiSlice";
 import { saveDuploContextSettings } from "../../redux/thunks/session";
+import { getDuploToken } from "../../util/duploCredentials";
 import Spinner from "../gui/Spinner";
 import { Card } from "../ui";
 import ContextUpdatedDialog from "./ContextUpdatedDialog";
@@ -37,11 +37,9 @@ export const DuploContextDialog: React.FC<{
 
   const sessionId = useAppSelector((store) => store.session.id);
   const sesTitle = useAppSelector((s) => s.session.title);
-
-  const duploList = useAppSelector<DuploPortal[]>(
-    (s) => (s.config?.config?.ui as any)?.duplo || [],
+  const portalMap = useAppSelector<Record<string, boolean>>(
+    (s) => s.session.portalAuthStatuses,
   );
-
   const [portal, setPortal] = useState<string>(duploContext?.portal ?? "");
   const [tenant, setTenant] = useState<TenantsWithAgents | undefined>(
     duploContext?.tenant || undefined,
@@ -73,66 +71,73 @@ export const DuploContextDialog: React.FC<{
     if (!isDialogOpen) return;
 
     const setPortalMap = async () => {
-      const list = duploList || [];
+      const list = Object.entries(portalMap).map(([portal]) => portal);
 
-      console.log(
-        "[CloudSettings] starting tenants fetch for portals: ",
-        list.map((d) => d.portal),
-      );
+      console.log("[CloudSettings] starting tenants fetch for portals: ", list);
 
+      if (list.length === 0) {
+        setError("No authenticated portals were found.");
+        return;
+      }
       const portalTenantsMap: Record<string, TenantsWithAgents[]> = {};
       const portalErrors: Record<string, string> = {};
       setIsLoading(true);
 
       // Create array of promises for parallel execution
-      const fetchPromises = list
-        .filter((d) => d?.portal) // Skip portals without portal value
-        .map(async (d) => {
-          try {
-            const configPortals = await ideMessenger.request(
-              "duplo/getPortalTenants",
-              {
-                portal: d.portal,
-                token: d.token,
-              },
-            );
-            console.log(
-              "[CloudSettings] tenants fetch configPortals:",
-              configPortals,
-            );
+      const fetchPromises = list.map(async (portalUrl) => {
+        try {
+          const token = (await getDuploToken(ideMessenger, portalUrl)) || "";
 
-            if (configPortals.status !== "success") {
-              portalErrors[d.portal] = configPortals.error;
-              portalTenantsMap[d.portal] = [];
-              return;
-            }
-
-            const { success, body } = configPortals.content;
-
-            if (!success) {
-              portalErrors[d.portal] = body;
-              portalTenantsMap[d.portal] = [];
-              return;
-            }
-
-            const tenants = Array.isArray(body)
-              ? body.filter((t) => t.agentInstances?.length)
-              : [];
-
-            console.log("[CloudSettings] tenants fetch tenants:", tenants);
-            portalTenantsMap[d.portal] = tenants;
-          } catch (e) {
-            console.warn(
-              "[CloudSettings] GET via core proxy failed",
-              d.portal,
-              e,
-            );
-
-            portalErrors[d.portal] = (e as Error)?.message || String(e);
-            // Ensure tenants list for this portal is empty when failing
-            portalTenantsMap[d.portal] = [];
+          if (!token) {
+            portalErrors[portalUrl] = "Failed to get authentication token";
+            portalTenantsMap[portalUrl] = [];
+            return;
           }
-        });
+
+          const configPortals = await ideMessenger.request(
+            "duplo/getPortalTenants",
+            {
+              portal: portalUrl,
+              token,
+            },
+          );
+          console.log(
+            "[CloudSettings] tenants fetch configPortals:",
+            configPortals,
+          );
+
+          if (configPortals.status !== "success") {
+            portalErrors[portalUrl] = configPortals.error;
+            portalTenantsMap[portalUrl] = [];
+            return;
+          }
+
+          const { success, body } = configPortals.content;
+
+          if (!success) {
+            portalErrors[portalUrl] = body;
+            portalTenantsMap[portalUrl] = [];
+            return;
+          }
+
+          const tenants = Array.isArray(body)
+            ? body.filter((t) => t.agentInstances?.length)
+            : [];
+
+          console.log("[CloudSettings] tenants fetch tenants:", tenants);
+          portalTenantsMap[portalUrl] = tenants;
+        } catch (e) {
+          console.warn(
+            "[CloudSettings] GET via core proxy failed",
+            portalUrl,
+            e,
+          );
+
+          portalErrors[portalUrl] = (e as Error)?.message || String(e);
+          // Ensure tenants list for this portal is empty when failing
+          portalTenantsMap[portalUrl] = [];
+        }
+      });
 
       // Wait for all portal fetches to complete in parallel
       await Promise.all(fetchPromises);
@@ -148,7 +153,7 @@ export const DuploContextDialog: React.FC<{
       );
       setTenantsByPortal((prev) => ({ ...prev, ...portalTenantsMap }));
       if (!duploContext?.portal && list.length === 1) {
-        onPortalChange(list[0].portal);
+        onPortalChange(list[0]);
       }
 
       setIsLoading(false);
@@ -164,7 +169,7 @@ export const DuploContextDialog: React.FC<{
       duploContext?.agent?.instanceId
         ? true
         : false;
-  }, [isDialogOpen, ideMessenger]);
+  }, [isDialogOpen]);
 
   useEffect(() => {
     if (duploContext?.tenant?.tenantId) {
@@ -187,8 +192,12 @@ export const DuploContextDialog: React.FC<{
 
   const onSaveTicket = useCallback(async () => {
     try {
-      const authToken = duploList.find((d) => d.portal === portal)
-        ?.token as string;
+      const authToken = await getDuploToken(ideMessenger, portal);
+
+      if (!authToken) {
+        setError("Failed to get authentication token");
+        return;
+      }
 
       if (!agent?.instanceId) {
         setError("Agent is not selected");
@@ -314,6 +323,17 @@ export const DuploContextDialog: React.FC<{
     setAgent(agent);
   };
 
+  const portalOptions = useMemo(
+    () =>
+      Object.entries(portalMap)
+        .filter(([_, isAuthenticated]) => isAuthenticated)
+        .map(([portal]) => ({
+          label: portal,
+          value: portal,
+        })) || [],
+    [portalMap],
+  );
+
   return (
     <div className="p-4">
       <ConfigHeader title="Set DuploCloud Context" />
@@ -322,7 +342,7 @@ export const DuploContextDialog: React.FC<{
 
         <div className="flex flex-col gap-4">
           <UserSetting
-            disabled={!duploList?.length || isLoading}
+            disabled={!portalOptions?.length || isLoading}
             stacked
             type="select"
             title="Portal"
@@ -330,10 +350,7 @@ export const DuploContextDialog: React.FC<{
             placeholder="Select a portal"
             value={portal}
             onChange={onPortalChange}
-            options={(duploList || []).map((d) => ({
-              label: d.portal,
-              value: d.portal,
-            }))}
+            options={portalOptions}
           />
 
           <UserSetting

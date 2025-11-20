@@ -76,6 +76,8 @@ describe("sessionSlice streamUpdate", () => {
     newestToolbarPreviewForInput: {},
     isSessionMetadataLoading: false,
     compactionLoading: {},
+    duploContext: undefined,
+    portalAuthStatuses: {},
   });
 
   describe("Basic Chat Message", () => {

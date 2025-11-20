@@ -586,6 +586,24 @@ export class Core {
       }
     });
 
+    on("duplo/getUserRoleByPortal", async (msg) => {
+      const { portalURL, authToken } = msg.data ?? {};
+      if (!portalURL)
+        return { success: false, body: { error: "missing portalURL" } };
+      try {
+        return await duploContextService.getUserRoleByPortal(
+          portalURL,
+          authToken,
+        );
+      } catch (e: any) {
+        console.warn("[duplo/proxy] request failed:", e?.message || e);
+        return {
+          success: false,
+          body: { error: e?.message || String(e) },
+        };
+      }
+    });
+
     on("mcp/reloadServer", async (msg) => {
       await MCPManagerSingleton.getInstance().refreshConnection(msg.data.id);
     });

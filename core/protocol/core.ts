@@ -354,4 +354,8 @@ export type ToCoreFromIdeOrWebviewProtocol = {
     DuploContextPayload,
     { success: boolean; body: any },
   ];
+  "duplo/getUserRoleByPortal": [
+    { portalURL: string; authToken: string },
+    { success: boolean; body: any },
+  ];
 };

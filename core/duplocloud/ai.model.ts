@@ -1,5 +1,79 @@
 import { v4 as uuidv4 } from "uuid";
 
+export class DuploPortalCredentials {
+  portal: string = "";
+  authToken?: string = "";
+  userInfo?: DuploUserInfo;
+  isAuthenticated?: boolean;
+  lastLogin?: number;
+
+  constructor(props?: Partial<DuploPortalCredentials>) {
+    Object.assign(this, props || {});
+  }
+
+  get domain(): string | undefined {
+    return DuploPortalCredentials.getDomainFromUrl(this.portal);
+  }
+
+  get origin(): string | undefined {
+    return DuploPortalCredentials.getOriginFromUrl(this.portal);
+  }
+
+  static getDomainFromUrl(url: string): string {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.hostname || parsedUrl.host;
+    } catch (error) {
+      console.error("Invalid URL format:", error);
+      return "";
+    }
+  }
+
+  static getOriginFromUrl(url: string): string {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.origin;
+    } catch (error) {
+      console.error("Invalid URL format:", error);
+      return "";
+    }
+  }
+}
+
+export interface DuploPortalCredentialsStore {
+  portals: Record<string, DuploPortalCredentials>;
+}
+
+export const DUPLO_CREDENTIALS_KEY = "duplo.portal.credentials";
+
+// API object: The currently logged-in user's role information.
+export class DuploUserInfo {
+  Username: string = "";
+  Roles: DuploUserRole[] = [];
+  TenantAccess?: Record<string, any>;
+
+  constructor(properties?: Partial<DuploUserInfo>) {
+    Object.assign(this, properties);
+  }
+
+  get isAdmin(): boolean {
+    return this.Roles.includes(DuploUserRole.Admin);
+  }
+
+  // Method to check read-only access for a given tenant. Defaults to false if no access policy is found.
+  isReadOnly(tenantId: string): boolean {
+    return this.TenantAccess?.[tenantId]?.IsReadOnly ?? false;
+  }
+}
+
+export enum DuploUserRole {
+  User = "User",
+  Admin = "Administrator",
+  Signup = "SignupUser",
+  Security = "SecurityAdmin",
+  AiStudioAdmin = "AIStudioAdmin",
+}
+
 export interface DuploContextPayload {
   context: DuploContext;
   authToken: string;
