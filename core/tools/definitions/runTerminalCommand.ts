@@ -1,10 +1,10 @@
-import os from "os";
-import { Tool } from "../..";
-import { BUILT_IN_GROUP_NAME, BuiltInToolNames } from "../builtIn";
 import {
   evaluateTerminalCommandSecurity,
   ToolPolicy,
 } from "@continuedev/terminal-security";
+import os from "os";
+import { Tool } from "../..";
+import { BUILT_IN_GROUP_NAME, BuiltInToolNames } from "../builtIn";
 
 /**
  * Get the preferred shell for the current platform
@@ -29,6 +29,7 @@ const RUN_COMMAND_NOTES = `The shell is not stateful and will not remember any p
       When a command is run in the background ALWAYS suggest using shell commands to stop it; NEVER suggest using Ctrl+C.\
       When suggesting subsequent shell commands ALWAYS format them in shell command blocks.\
       Do NOT perform actions requiring special/admin privileges.\
+      IMPORTANT: Do NOT use this tool for kubectl or helm commands that interact with live clusters (e.g., helm install, kubectl apply, kubectl get). You lack kubeconfig credentials. Instead, use the sendHelpdeskMessage tool to delegate to the k8s agent.\
       ${PLATFORM_INFO}`;
 
 export const runTerminalCommandTool: Tool = {

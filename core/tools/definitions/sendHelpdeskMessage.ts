@@ -17,11 +17,21 @@ export const sendHelpdeskMessageTool: Tool = {
 AVAILABLE HELP DESK AGENTS:
 
 1. "k8s"
-  Capabilities: Has kubeconfig credentials and cluster context. Executes kubectl and helm commands against live Kubernetes clusters.
+  Capabilities: Has kubeconfig credentials and cluster context. Can execute commands against live Kubernetes clusters.
   
-  When to use: Anytime you need to run kubectl or helm commands that require cluster access. Examples: querying cluster state, deploying resources, checking logs, scaling deployments, managing helm releases.
+  CRITICAL: You do NOT have kubeconfig credentials. Any command that interacts with a live cluster MUST be delegated to this agent.
   
-  When not to use: Tasks you can complete with built-in tools (read_file, write_file, run_command, web search). Examples: generating manifests, creating Helm chart files locally, analyzing YAML, searching documentation.
+  DELEGATE TO K8S AGENT FOR:
+  - Installing/managing helm releases: helm install, helm upgrade, helm uninstall, helm list, helm status, helm rollback
+  - Applying/managing K8s resources: kubectl apply, kubectl create, kubectl delete, kubectl patch, kubectl scale
+  - Querying live cluster state: kubectl get, kubectl describe, kubectl logs, kubectl top, kubectl exec
+  - Any operation requiring cluster access, namespace context, or kubeconfig credentials
+  
+  YOU HANDLE LOCALLY (with your built-in tools):
+  - Creating/editing Kubernetes manifests or Helm chart files (use write_file, edit tools)
+  - Local helm operations: helm template, helm lint, helm package, helm dependency update
+  - Analyzing or validating YAML files (use read_file)
+  - Searching documentation or web resources
 
 RESPONSE STYLE:
 This tool calls outputs i.e. the HelpDesk Agent outputs are displayed directly to the user above your response. Reference them naturally without repeating their content. Keep your response minimal and action-oriented.`,
