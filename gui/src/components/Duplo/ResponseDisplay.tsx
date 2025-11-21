@@ -16,12 +16,14 @@ interface DuploResponseDisplayProps {
   agentResponse: DuploAgentResponse;
   eventId: string;
   isActive: boolean;
+  isCancelled: boolean;
 }
 
 export function DuploResponseDisplay({
   agentResponse,
   eventId,
   isActive,
+  isCancelled = false,
 }: DuploResponseDisplayProps) {
   const ideMessenger = useContext(IdeMessengerContext);
   const [cmdList, setCmdList] = useState<TerminalCommand[]>([]);
@@ -94,7 +96,28 @@ export function DuploResponseDisplay({
     setIsSubmited(true);
   };
 
-  const isDisabled = !isActive || isSubmited;
+  const isDisabled = !isActive || isSubmited || isCancelled;
+
+  useEffect(() => {
+    if (isActive && !isSubmited && isCancelled) {
+      setCmdList((list) =>
+        list.map((cmd) => ({
+          ...cmd,
+          selectionType: CommandSelectionType.IGNORED,
+        })),
+      );
+
+      setToolList((list) =>
+        list.map(
+          (tool) =>
+            new DuploToolResponse({
+              ...tool,
+              selectionType: CommandSelectionType.IGNORED,
+            }),
+        ),
+      );
+    }
+  }, [isCancelled, isActive, isSubmited, setCmdList, setToolList]);
 
   return (
     <div className="bg-editor rounded-default mb-3 flex flex-col px-3 py-0">

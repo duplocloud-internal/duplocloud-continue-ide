@@ -8,11 +8,14 @@ import {
   DuploContextPayload,
   DuploContextType,
   DuploUserInfo,
+  MessageResponse,
   TenantsWithAgents,
   TicketAgent,
   UserMessage,
 } from "./ai.model";
 import { createChatMessage } from "./ai.utils";
+
+export const DUPLO_CREDENTIALS_KEY = "duplo.portal.credentials";
 
 class DuploService {
   cacheTenants: Map<string, TenantsWithAgents[]> = new Map();
@@ -38,7 +41,7 @@ class DuploService {
       portalURL,
     );
     try {
-      const res = await fetchwithRequestOptions(
+      const response = await fetchwithRequestOptions(
         `${portalURL}/v1/aiservicedesk/admin/tenants/agents`,
         {
           method: "GET",
@@ -49,31 +52,27 @@ class DuploService {
         },
       );
 
-      if (res.status === 401) {
-        return { success: false, body: `Invalid token for ${portalURL}` };
+      console.log("[duplo-service/getPortalTenants] status=", response.status);
+
+      if (response.status === 401) {
+        return {
+          success: false,
+          body: `UNAUTHENTICATED: Invalid token for ${portalURL}`,
+        };
       }
 
-      const text = await res.text();
-      try {
-        const json: TenantsWithAgents[] = JSON.parse(text);
-        console.log("[duplo-service/getPortalTenants] status=", res.status);
+      if (!response.ok) throw new Error(await response.text());
 
-        const tenants = json
-          ?.map((agent) => new TenantsWithAgents(agent))
-          ?.sort((a, b) =>
-            (a.tenantName || "").localeCompare(b.tenantName || ""),
-          );
+      const json = (await response.json()) as TenantsWithAgents[];
 
-        this.cacheTenants.set(portalURL, tenants);
-        return { success: true, body: tenants };
-      } catch {
-        console.log(
-          "[duplo-service/getPortalTenants] status=",
-          res.status,
-          "(non-JSON body)",
+      const tenants = json
+        ?.map((agent) => new TenantsWithAgents(agent))
+        ?.sort((a, b) =>
+          (a.tenantName || "").localeCompare(b.tenantName || ""),
         );
-        return { success: false, body: "Invalid response format" };
-      }
+
+      this.cacheTenants.set(portalURL, tenants);
+      return { success: true, body: tenants };
     } catch (error) {
       console.error(
         "[duplo-service/getPortalTenants] Error getting tenants with agents for `",
@@ -122,7 +121,7 @@ class DuploService {
         portalURL,
       );
 
-      const res = await fetchwithRequestOptions(
+      const response = await fetchwithRequestOptions(
         `${portalURL}/admin/GetUserRoleInfo`,
         {
           method: "GET",
@@ -132,36 +131,29 @@ class DuploService {
         },
       );
 
-      if (res.status === 401) {
+      console.log(
+        "[duplo-service/getUserRoleByPortal] status=",
+        response.status,
+      );
+
+      if (response.status === 401) {
         return {
           success: false,
           body: `UNAUTHENTICATED: Invalid token for ${portalURL}`,
         };
       }
 
-      if (!res.ok) {
-        return {
-          success: false,
-          body: `Failed to get user role: ${res.status}`,
-        };
-      }
+      if (!response.ok) throw new Error(await response.text());
 
-      const text = await res.text();
-      try {
-        const json: DuploUserInfo = JSON.parse(text);
-        console.log("[duplo-service/getUserRoleByPortal] status=", res.status);
+      const json = (await response.json()) as DuploUserInfo;
+      console.log(
+        "[duplo-service/getUserRoleByPortal] status=",
+        response.status,
+      );
 
-        const userInfo = new DuploUserInfo(json);
+      const userInfo = new DuploUserInfo(json);
 
-        return { success: true, body: userInfo };
-      } catch {
-        console.log(
-          "[duplo-service/getUserRoleByPortal] parse error - status=",
-          text,
-          "(non-JSON body)",
-        );
-        return { success: false, body: "Invalid response format" };
-      }
+      return { success: true, body: userInfo };
     } catch (error) {
       console.error("Error getting user role:", error);
       return { success: false, body: "Failed to get user role" };
@@ -227,7 +219,7 @@ class DuploService {
       aiTicket,
     );
     try {
-      const res = await fetchwithRequestOptions(
+      const response = await fetchwithRequestOptions(
         `${portal}/v1/aiservicedesk/tickets/${tenant?.tenantId}`,
         {
           method: "POST",
@@ -239,19 +231,15 @@ class DuploService {
         },
       );
 
-      const text = await res.text();
+      console.log("[duplo-service/createAiTicket] status=", response.status);
 
-      console.log("[duplo-service/createAiTicket] status=", res.status);
+      if (!response.ok) throw new Error(await response.text());
 
-      try {
-        const json: AiTicket[] = JSON.parse(text);
-        console.log("[duplo-service/createAiTicket] body=", json);
+      const json: AiTicket[] = (await response.json()) as AiTicket[];
 
-        return { success: true, body: json };
-      } catch {
-        console.log("[duplo-service/createAiTicket] body=", text);
-        return { success: false, body: "Invalid response format" };
-      }
+      console.log("[duplo-service/createAiTicket] body=", json);
+
+      return { success: true, body: json };
     } catch (error) {
       console.error(
         "[duplo-service/createAiTicket] Error while getting creating AI ticket:",
@@ -284,16 +272,15 @@ class DuploService {
           "content-type": "application/json",
         },
       });
-      const text = await response.text();
-      try {
-        const json: AiTicket[] = JSON.parse(text);
-        console.log("[duplo-service/getAITicketById] body=", json);
 
-        return { success: true, body: json };
-      } catch {
-        console.log("[duplo-service/getAITicketById] body=", text);
-        return { success: false, body: "Invalid response format" };
-      }
+      console.log("[duplo-service/getAITicketById] status=", response.status);
+
+      if (!response.ok) throw new Error(await response.text());
+
+      const json = await response.json();
+      console.log("[duplo-service/getAITicketById] body=", json);
+
+      return { success: true, body: json };
     } catch (error) {
       console.error(
         "[duplo-service/getAITicketById] Error while getting ticket by id:",
@@ -341,15 +328,17 @@ class DuploService {
           "content-type": "application/json",
         },
       });
-      const text = await response.text();
-      try {
-        const json = JSON.parse(text);
-        console.log("[duplo-service/setTicketUpdatedContext] body=", json);
-        return { success: true, body: json };
-      } catch {
-        console.log("[duplo-service/setTicketUpdatedContext] body=", text);
-        return { success: false, body: "Invalid response format" };
-      }
+
+      console.log(
+        "[duplo-service/setTicketUpdatedContext] status=",
+        response.status,
+      );
+
+      if (!response.ok) throw new Error(await response.text());
+
+      const json = await response.json();
+      console.log("[duplo-service/setTicketUpdatedContext] body=", json);
+      return { success: true, body: json };
     } catch (error) {
       console.error(
         "[duplo-service/setTicketUpdatedContext]  Error while set ticket context updated:",
@@ -380,15 +369,14 @@ class DuploService {
         },
         body: JSON.stringify(agent),
       });
-      const text = await response.text();
-      try {
-        const json = JSON.parse(text);
-        console.log("[duplo-service/updateTicketAgent] body=", json);
-        return { success: true, body: json };
-      } catch {
-        console.log("[duplo-service/updateTicketAgent] body=", text);
-        return { success: false, body: "Invalid response format" };
-      }
+
+      console.log("[duplo-service/updateTicketAgent] status=", response.status);
+
+      if (!response.ok) throw new Error(await response.text());
+
+      const json = await response.json();
+      console.log("[duplo-service/updateTicketAgent] body=", json);
+      return { success: true, body: json };
     } catch (error) {
       console.error("Error while updating agent:", error);
       return {
@@ -424,24 +412,21 @@ class DuploService {
         },
         body: JSON.stringify(payload),
       });
-      const text = await response.text();
-      try {
-        const json = JSON.parse(text);
-        console.log("[duplo-service/sendHelpDeskMessage] response json=", json);
-        return {
-          success: true,
-          body: createChatMessage(
-            json,
-            ChatRole.ASSISTANT,
-          ) as DuploAgentResponse,
-        };
-      } catch {
-        console.error(
-          "[duplo-service/sendHelpDeskMessage] response text=",
-          text,
-        );
-        return { success: false, body: "Invalid response format" };
-      }
+
+      console.log(
+        "[duplo-service/sendHelpDeskMessage] status=",
+        response.status,
+      );
+
+      if (!response.ok) throw new Error(await response.text());
+
+      const json = (await response.json()) as MessageResponse;
+
+      console.log("[duplo-service/sendHelpDeskMessage] response json=", json);
+      return {
+        success: true,
+        body: createChatMessage(json, ChatRole.ASSISTANT) as DuploAgentResponse,
+      };
     } catch (error) {
       console.error("Error while sending message:", error);
       return {

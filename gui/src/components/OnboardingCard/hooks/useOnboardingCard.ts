@@ -7,7 +7,10 @@ import {
   setOnboardingCard,
   setShowDialog,
 } from "../../../redux/slices/uiSlice";
-import { getLocalStorage, setLocalStorage } from "../../../util/localStorage";
+import {
+  getSessionStorage,
+  setSessionStorage,
+} from "../../../util/localStorage";
 
 export interface UseOnboardingCard {
   show: OnboardingCardState["show"];
@@ -23,8 +26,8 @@ export function useOnboardingCard(): UseOnboardingCard {
 
   const onboardingCard = useAppSelector((state) => state.ui.onboardingCard);
 
-  const onboardingStatus = getLocalStorage("onboardingStatus");
-  const hasDismissedOnboardingCard = getLocalStorage(
+  const onboardingStatus = getSessionStorage("onboardingStatus");
+  const hasDismissedOnboardingCard = getSessionStorage(
     "hasDismissedOnboardingCard",
   );
 
@@ -49,7 +52,7 @@ export function useOnboardingCard(): UseOnboardingCard {
   }
 
   function close(isDialog = false) {
-    setLocalStorage("hasDismissedOnboardingCard", true);
+    setSessionStorage("hasDismissedOnboardingCard", true);
     dispatch(setOnboardingCard({ show: false }));
     if (isDialog) {
       dispatch(setDialogMessage(undefined));

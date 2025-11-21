@@ -37,6 +37,7 @@ import { VsCodeIde } from "../VsCodeIde";
 import { VsCodeWebviewProtocol } from "../webviewProtocol";
 
 import {
+  DUPLO_CREDENTIALS_KEY,
   DuploPortalCredentials,
   DuploUserInfo,
 } from "core/duplocloud/ai.model";
@@ -89,7 +90,11 @@ export class VsCodeMessenger {
   private _pendingDuploLogins = new Map<
     string,
     {
-      resolve: (value: { success: boolean; error?: string }) => void;
+      resolve: (value: {
+        success: boolean;
+        error?: string;
+        token?: string;
+      }) => void;
       reject: (reason?: any) => void;
     }
   >();
@@ -853,9 +858,6 @@ export class VsCodeMessenger {
       await handleLLMError(msg.data);
     });
 
-    /** DUPLO CREDENTIAL MANAGEMENT (SECURE) **/
-    const DUPLO_CREDENTIALS_KEY = "duplo.portal.credentials";
-
     this.onWebviewOrCore("duplo/savePortalCredentials", async (msg) => {
       const { portal, authToken, userInfo } = msg.data;
 
@@ -1050,21 +1052,21 @@ export class VsCodeMessenger {
 
       // Save credentials to SecretStorage
       console.log("[DuploCloud] Saving credentials for portal:", targetPortal);
+      const secretValue = await this.ide.readSecrets([DUPLO_CREDENTIALS_KEY]);
+      const existing = secretValue[DUPLO_CREDENTIALS_KEY]
+        ? JSON.parse(secretValue[DUPLO_CREDENTIALS_KEY])
+        : { portals: {} };
+      existing.portals[targetPortal] = {
+        portal: targetPortal,
+        authToken: token,
+        userInfo,
+        lastLogin: Date.now(),
+      };
       await this.ide.writeSecrets({
-        ["duplo.portal.credentials"]: JSON.stringify({
-          portals: {
-            [targetPortal]: {
-              portal: targetPortal,
-              authToken: token,
-              userInfo,
-              lastLogin: Date.now(),
-            },
-          },
-        }),
+        [DUPLO_CREDENTIALS_KEY]: JSON.stringify(existing),
       });
 
-      // Resolve the promise
-      pendingLogin.resolve({ success: true });
+      pendingLogin.resolve({ success: true, token });
       this._pendingDuploLogins.delete(targetPortal);
 
       // Show success message

@@ -1,11 +1,14 @@
-import { useContext } from "react";
+import { useContext, useRef } from "react";
 import { Button } from "../..";
 import { useAuth } from "../../../context/Auth";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { selectCurrentOrg } from "../../../redux/slices/profilesSlice";
 import { selectFirstHubProfile } from "../../../redux/thunks/selectFirstHubProfile";
-import { PortalAuthStatus } from "../../Duplo/Auth/PortalAuthStatus";
+import {
+  PortalAuthStatus,
+  PortalAuthStatusHandle,
+} from "../../Duplo/Auth/PortalAuthStatus";
 import DuploCloudLogo from "../../svg/DuploCloudLogo";
 import { useOnboardingCard } from "../hooks/useOnboardingCard";
 
@@ -17,6 +20,7 @@ export function OnboardingCardLanding({
   isDialog?: boolean;
 }) {
   const ideMessenger = useContext(IdeMessengerContext);
+  const portalAuthRef = useRef<PortalAuthStatusHandle>(null);
 
   const onboardingCard = useOnboardingCard();
   const auth = useAuth();
@@ -96,11 +100,19 @@ export function OnboardingCardLanding({
         </>
       )} */}
 
-      <PortalAuthStatus />
+      <PortalAuthStatus ref={portalAuthRef} />
 
-      <Button onClick={onSelectConfigure} className="w-full">
-        Configure your models
-      </Button>
+      <div className="flex w-full items-center justify-center gap-2">
+        <Button
+          onClick={() => portalAuthRef.current?.handleAddPortal()}
+          className="flex-1"
+        >
+          Add Portal
+        </Button>
+        <Button onClick={onSelectConfigure} className="flex-1">
+          Configure models
+        </Button>
+      </div>
     </div>
   );
 }

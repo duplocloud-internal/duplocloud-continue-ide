@@ -31,6 +31,8 @@ interface DuploToolEventState {
   isActive: boolean;
 }
 
+const ACTIVE_TOOL_STATUS = ["generating", "generated", "calling"];
+
 export function DuploToolEvent({
   tool,
   toolCallState,
@@ -38,6 +40,7 @@ export function DuploToolEvent({
 }: DuploToolEventProps) {
   const ideMessenger = useContext(IdeMessengerContext);
   const sessionContext = useAppSelector((s) => s.session.duploContext);
+  const history = useAppSelector((s) => s.session.history);
   const [duploContext, setDuploContext] = useState<DuploContext | undefined>(
     sessionContext,
   );
@@ -62,13 +65,46 @@ export function DuploToolEvent({
   }
 
   useEffect(() => {
-    if (["generating", "generated", "calling"].includes(toolCallState.status)) {
+    const messageList = toolCallState?.stateItems?.messageList;
+
+    if (Array.isArray(messageList)) {
+      const stateList = processMessageHistory(messageList)
+        ?.filter((resp) => resp.role === ChatRole.ASSISTANT)
+        .map((resp) => ({
+          agentResponse: resp as DuploAgentResponse,
+          responseId: resp.id as string,
+          eventId: resp.id as string,
+          isActive: false,
+        }));
+
+      if (stateList.length) {
+        setStateList(stateList);
+      }
+    }
+
+    const context = toolCallState?.stateItems?.context as DuploContext;
+    if (context?.portal && context?.tenant?.tenantId) {
+      setDuploContext(context);
+    }
+  }, []);
+
+  const isCancelled = useMemo(() => {
+    // Check if there is any user message after the current message index
+    if (!ACTIVE_TOOL_STATUS.includes(toolCallState.status)) return false;
+
+    return history
+      .slice(historyIndex + 1)
+      .some((item) => item.message.role === "user");
+  }, [history, historyIndex]);
+
+  useEffect(() => {
+    if (ACTIVE_TOOL_STATUS.includes(toolCallState.status) && !isCancelled) {
       const handleMessage = async (event: MessageEvent) => {
         const message = event.data;
         const data = message.data;
         const toolCallId = data?.toolCallId as string;
 
-        if (toolCallId !== toolCallState?.toolCallId) return;
+        if (toolCallId !== toolCallState?.toolCallId || isCancelled) return;
 
         const messageType = message.messageType;
         if (messageType === "tools-duplo/approveActions") {
@@ -102,33 +138,11 @@ export function DuploToolEvent({
 
       window.addEventListener("message", handleMessage);
       return () => window.removeEventListener("message", handleMessage);
-    } else {
-      const messageList = toolCallState?.stateItems?.messageList;
-
-      if (Array.isArray(messageList)) {
-        const stateList = processMessageHistory(messageList)
-          ?.filter((resp) => resp.role === ChatRole.ASSISTANT)
-          .map((resp) => ({
-            agentResponse: resp as DuploAgentResponse,
-            responseId: resp.id as string,
-            eventId: resp.id as string,
-            isActive: false,
-          }));
-
-        if (stateList.length) {
-          setStateList(stateList);
-        }
-      }
-
-      const context = toolCallState?.stateItems?.context as DuploContext;
-      if (context?.portal && context?.tenant?.tenantId) {
-        setDuploContext(context);
-      }
     }
-  }, []);
+  }, [isCancelled]);
 
   return (
-    <div className="mt-1 flex flex-col pl-2 pr-1">
+    <div className="mb-4 mt-1 flex flex-col pl-2 pr-1">
       {/* Status Header */}
       <div
         onClick={isClickable ? handleClick : undefined}
@@ -153,11 +167,16 @@ export function DuploToolEvent({
           agentResponse={agentResponse}
           eventId={eventId}
           isActive={isActive}
+          isCancelled={isCancelled}
         />
       ))}
 
       <div className="mt-0 flex items-center justify-between">
-        {status ? <DuploToolStatusDisplay status={status} /> : <div></div>}
+        {status && !isCancelled ? (
+          <DuploToolStatusDisplay status={status} />
+        ) : (
+          <div></div>
+        )}
 
         <HelpDeskLink context={duploContext} />
       </div>
