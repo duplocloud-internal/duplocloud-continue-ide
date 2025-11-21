@@ -3,8 +3,14 @@ import {
   DuploPortalCredentials,
   DuploUserInfo,
 } from "core/duplocloud/ai.model";
-import React, { useContext, useEffect, useState } from "react";
-import { Button, GhostButton } from "../..";
+import {
+  forwardRef,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
+import { GhostButton } from "../..";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { useAppDispatch } from "../../../redux/hooks";
 import {
@@ -29,7 +35,11 @@ export interface PortalStatus extends Partial<DuploPortalCredentials> {
   userInfo?: DuploUserInfo;
 }
 
-export const PortalAuthStatus: React.FC = () => {
+export interface PortalAuthStatusHandle {
+  handleAddPortal: () => void;
+}
+
+export const PortalAuthStatus = forwardRef<PortalAuthStatusHandle>((_, ref) => {
   const ideMessenger = useContext(IdeMessengerContext);
   const dispatch = useAppDispatch();
 
@@ -68,7 +78,7 @@ export const PortalAuthStatus: React.FC = () => {
 
             if (isAuthenticated) {
               const userRole = result.content.body;
-              saveDuploCredential(
+              void saveDuploCredential(
                 ideMessenger,
                 portal,
                 status.authToken,
@@ -159,6 +169,14 @@ export const PortalAuthStatus: React.FC = () => {
     setIsAddPortalModalOpen(true);
   };
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      handleAddPortal,
+    }),
+    [],
+  );
+
   return (
     <div className="flex w-full flex-col">
       <div className="m-auto flex flex-col">
@@ -184,19 +202,19 @@ export const PortalAuthStatus: React.FC = () => {
                   </span>
                 </div>
 
+                <TrashIcon
+                  className="mb-.5 h-4 w-4 cursor-pointer"
+                  onClick={() => handleDeletePortal(portalUrl)}
+                />
+
                 {!portalStatus.isAuthenticated && !portalStatus.isLoading ? (
                   <GhostButton
                     onClick={() => handleUpdatePortal(portalUrl)}
-                    className="text-description mb-1 ml-1 text-xs"
+                    className="text-description mb-1 ml-1 mt-1 text-xs"
                   >
-                    Login Required
+                    Login
                   </GhostButton>
                 ) : null}
-
-                <TrashIcon
-                  className="mb-1.5 h-4 w-4 cursor-pointer"
-                  onClick={() => handleDeletePortal(portalUrl)}
-                />
               </div>
             </div>
           );
@@ -204,9 +222,6 @@ export const PortalAuthStatus: React.FC = () => {
 
         {/* Button to add new portal */}
       </div>
-      <Button onClick={handleAddPortal} className="flex-1">
-        Add Portal
-      </Button>
 
       <AddPortalModal
         portal={selPortal || ""}
@@ -217,4 +232,6 @@ export const PortalAuthStatus: React.FC = () => {
       />
     </div>
   );
-};
+});
+
+PortalAuthStatus.displayName = "PortalAuthStatus";

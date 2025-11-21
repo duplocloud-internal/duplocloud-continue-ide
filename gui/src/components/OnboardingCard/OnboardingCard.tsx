@@ -75,7 +75,7 @@ export function OnboardingCard({
   }
 
   return (
-    <ReusableCard showCloseButton={false} onClose={close}>
+    <ReusableCard showCloseButton={!isDialog} onClose={close}>
       <div className="flex h-full w-full items-center justify-center">
         <OnboardingCardLanding
           onSelectConfigure={() => setActiveTab(OnboardingModes.API_KEY)}
