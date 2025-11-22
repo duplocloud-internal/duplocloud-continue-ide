@@ -132,8 +132,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             vsix-artifacts/*.vsix
-          token: ${{ secrets.CI_GITHUB_TOKEN }}
-          repository: continuedev/continue
+          token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
+          repository: duplocloud-internal/duplocloud-continue-ide
 
   publish:
     runs-on: ubuntu-latest
